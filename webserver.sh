@@ -1,2 +1,1 @@
-cd src
-source nohup python app.py &
+python web/app.py

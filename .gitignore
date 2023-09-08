@@ -4,6 +4,7 @@ data
 
 # Python gitignores
 __pycache__
+*.egg-info
 
 # SWI-Prolog gitignores
 

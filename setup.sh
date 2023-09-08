@@ -7,3 +7,6 @@ pip install -r requirements.txt
 cd src/scasp
 make
 cd ../..
+
+# Install nl2logic as local python package
+pip install -e .
