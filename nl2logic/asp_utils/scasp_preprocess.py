@@ -136,10 +136,7 @@ def unpack_pool(term):
         new_arguments_pow = []
         for argument in term.arguments:
             new_arguments_pow.append(unpack_pool(argument))
-        # print(new_arguments_pow)
         for new_arguments in itertools.product(*new_arguments_pow):
-            # print([str(x) for x in new_arguments])
-            # print([str(x) for x in term.arguments])
             assert len(new_arguments) == len(term.arguments)
             new_term = deepcopy(term)
             new_term.arguments = new_arguments
@@ -148,10 +145,7 @@ def unpack_pool(term):
         new_arguments_pow = []
         for argument in term.arguments:
             new_arguments_pow.append(unpack_pool(argument))
-        # print(new_arguments_pow)
         for new_arguments in itertools.product(*new_arguments_pow):
-            # print([str(x) for x in new_arguments])
-            # print([str(x) for x in term.arguments])
             assert len(new_arguments) == len(term.arguments)
             terms.extend(new_arguments)
             # terms = new_arguments + terms # To obtain proper tree, move pool infront of other predicates.
