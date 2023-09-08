@@ -16,4 +16,4 @@ logs/*.log
 nl2logic_config.yaml
 
 # Compiled executables
-src/scasp/scasp
+scasp/scasp
