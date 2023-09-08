@@ -10,6 +10,7 @@ __pycache__
 
 # Execution logs
 nohup.out
+logs/*.log
 
 # Config files with credential informations
 nl2logic_config.yaml
