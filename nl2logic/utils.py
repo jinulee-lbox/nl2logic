@@ -144,31 +144,3 @@ def parse_law_asp_to_form(asp_code: str):
     
     result['terms'] = terms
     return result
-
-if __name__ == "__main__":
-    from .database_utils.db_utils import DatabaseAPI
-    from json import dumps
-    db = DatabaseAPI("nl2logic")
-    cases = db.query("SELECT * FROM data_case")
-    for case in cases:
-        new_case_asp_body = case['asp_code']
-        print(new_case_asp_body)
-        print("================")
-        print(parse_case_asp_to_form(new_case_asp_body))
-        db.query("UPDATE data_case SET asp_code = %s WHERE id = %s", (dumps(parse_case_asp_to_form(new_case_asp_body), ensure_ascii=False), case["id"]))
-
-    cases = db.query("SELECT * FROM data_case_temp")
-    for case in cases:
-        new_case_asp_body = case['asp_code']
-        print(new_case_asp_body)
-        print("================")
-        print(parse_case_asp_to_form(new_case_asp_body))
-        db.query("UPDATE data_case_temp SET asp_code = %s WHERE id = %s", (dumps(parse_case_asp_to_form(new_case_asp_body), ensure_ascii=False), case["id"]))
-    
-    cases = db.query("SELECT * FROM data_law")
-    for case in cases:
-        new_case_asp_body = case['asp_code']
-        print(new_case_asp_body)
-        print("================")
-        print(parse_law_asp_to_form(new_case_asp_body))
-        db.query("UPDATE data_law SET asp_code = %s WHERE id = %s", (dumps(parse_law_asp_to_form(new_case_asp_body), ensure_ascii=False), case["id"]))

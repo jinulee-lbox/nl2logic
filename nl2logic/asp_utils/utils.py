@@ -1,4 +1,5 @@
 import re
+from ..config import nl2logic_config as config
 
 UNIT_FACTOR = {
     # Numeric units
@@ -24,7 +25,7 @@ UNIT_FACTOR = {
     "도": 1000,
 }
 
-SCASP_PATH = "./scasp/scasp"
+SCASP_PATH = config.scasp_path
 
 def convert_numeric_string_to_int(input_string):
     pattern = r'^([-+]?\d{1,3}(?:,\d{3})*(\.\d+)?)|^([-+]?\d+(\.\d*)?)'

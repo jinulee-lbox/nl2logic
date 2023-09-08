@@ -1,8 +1,11 @@
 from typing import *
+import logging
 
 import pymysql
 import pymysql.cursors
+from ..config import nl2logic_config as config
 
+dbconfig = config.database
 
 class DatabaseAPI():
 
@@ -10,21 +13,21 @@ class DatabaseAPI():
         self.database = db
         try:
             conn = pymysql.connect(
-                user="annottool",
-                password="annottool123",
-                host="127.0.0.1",
-                port=3306,
+                user=dbconfig.user,
+                password=dbconfig.password,
+                host=dbconfig.host,
+                port=dbconfig.port,
                 database=self.database,
                 cursorclass=pymysql.cursors.DictCursor
-            ) # TODO config file
+            )
             self.conn = conn
         except pymysql.Error as e:
             # closed database
-            print(e)
+            logging.error(e)
 
     def query(self, sql: str, params: Union[tuple, None] = None):
         sql = sql.strip()
-        # print(sql)
+        logging.debug(sql)
 
         with self.conn.cursor() as cursor:
             try:

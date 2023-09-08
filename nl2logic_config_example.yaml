@@ -1,0 +1,20 @@
+scasp_path: "./scasp/scasp"
+
+database:
+  user: "annottool"
+  password: ""
+  host: "127.0.0.1"
+  port: 3306
+
+webserver:
+  port: 5000
+
+log:
+  webserver:
+    level: "info"
+    directory: "logs/"
+    filename: "webserver.log"
+  langchain:
+    level: "info"
+    directory: "logs/"
+    filename: "langchain.log"

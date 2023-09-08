@@ -233,7 +233,6 @@ def scasp_parse_just_trees(raw_output: str, debug=False):
     # Data integrity check
     len_answer_sets = len([int(x) for x in re.findall("Answer ([0-9]+)", raw_output)])
     if len(answer_trees) != len_answer_sets:
-        print(answer_trees)
         raise ValueError(f"Answer tree count({len(answer_trees)}) and answer set count({len_answer_sets}) does not match")
 
     # Remove auxiliary symbols: ∧, ←, ¬, .
@@ -261,7 +260,6 @@ def scasp_parse_just_trees(raw_output: str, debug=False):
         remove_unremoved_predicates(tree) # remove o_* / ∉
         remove_variables(tree)
         remove_duplicates(tree)
-        # print(tree)
 
     answer_trees = [tree for tree in answer_trees if remove_failed_answer_tree(tree)]
 

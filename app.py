@@ -3,11 +3,13 @@ Flask application to control submission.
 """
 from flask import Flask, request, jsonify
 import json
+import logging
 
 from nl2logic.validity import validity_check
 from nl2logic.asp_utils import *
 from nl2logic.database_utils import *
-# from nl2logic.utils import *
+from nl2logic.config import nl2logic_config as config
+from nl2logic.config import set_logger
 
 app = Flask(__name__, static_url_path='')
 
@@ -140,18 +142,17 @@ def update_law_db():
 def get_case_form():
     case_id = request.args.get('case_id')
 
-    # try:
-    result, is_temp = db_get_asp_body_from_case_id(case_id)
-    # print(result)
-    result = json.loads(result)
-    if is_temp:
-        result['laws'] = db_get_law_from_case(case_id, temp=True)
-    else:
-        result['laws'] = db_get_law_from_case(case_id)
-    return jsonify(result), 200
-    # except ValueError as e:
-    #     print(e)
-    #     return jsonify({}), 200
+    try:
+        result, is_temp = db_get_asp_body_from_case_id(case_id)
+        result = json.loads(result)
+        if is_temp:
+            result['laws'] = db_get_law_from_case(case_id, temp=True)
+        else:
+            result['laws'] = db_get_law_from_case(case_id)
+        return jsonify(result), 200
+    except ValueError as e:
+        logging.error(str(e))
+        return jsonify({}), 200
 
 @app.route('/get_law_form', methods=['GET'])
 def get_law_form():
@@ -165,4 +166,5 @@ def get_law_form():
         return jsonify({}), 200
     
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    set_logger("webserver")
+    app.run(host='0.0.0.0', port=config.webserver.port)

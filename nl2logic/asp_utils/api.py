@@ -1,4 +1,5 @@
 from typing import *
+import logging
 
 from clingo.ast import *
 from clingo.control import *
@@ -16,7 +17,6 @@ def asp_parse_program(terms: List[str]):
         try:
             parsed_program += scasp_preprocess(term) # Unpack pooling and #count aggregates, negated heads to constraints, ...
         except Exception as e:
-            print(term, e)
             success.append({
                 'code': 10,
                 'msg': "Syntax error " + str(e)
@@ -124,10 +124,10 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
     # Generate tempfile
     proofs = []
     flag_success = True
-    print(preprocessed_program)
+    logging.debug(preprocessed_program)
     for conc_symbol in conc_symbols:
         conc_symbol = str(conc_symbol)
-        # print(conc_symbol)
+        # logging.debug(conc_symbol)
         tree, posproved = get_proof_tree(preprocessed_program, conc_symbol)
         if posproved:
             tree = str(tree)
