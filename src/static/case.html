@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> L⁴ Annotator </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 13px;
+        }
+
+        label {
+            display: table;
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .nl-asp-term {
+            display: flex;
+            align-items: center;
+        }
+        .conclusion {
+            display: flex;
+            align-items: center;
+        }
+
+        .asp-term input {
+            margin-right: 10px;
+            width: 97%;
+        }
+        .asp-conc input {
+            margin-right: 10px;
+            width: 97%;
+        }
+        .asp-law-innerterm {
+            width: 100;
+        }
+        .asp-law-innerterm input {
+            margin-right: 10px;
+            width: 97%;
+        }
+        .delete-parent {
+            cursor: pointer;
+        }
+
+        #term-container {
+            margin-top: 20px;
+        }
+        #conc-container {
+            margin-top: 20px;
+        }
+
+        #add-law-btn {
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #add-term-btn {
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #add-conc-btn {
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        #submit-btn {
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .msgbox {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid black;
+            font-family: monospace;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <h1> L⁴(LBox Legal Logic Language) Annotator: 판례 </h1>
+    <a href="/law.html">법령 태깅하기</a> | <a href="/sandbox.html">자유 편집하기</a>
+    <hr>
+    <h3>사건 정보</h3>
+    <label for="courtname">법원:</label>
+    <input type="text" id="courtname">
+    <br>
+    <label for="casenum">사건번호(ex. 2022가합1234):</label>
+    <input type="text" id="casenum">
+    <button id="load-case-form-btn">판례 불러오기</button>
+
+    <hr>
+
+    <div id="law-container">
+        <h3>법조문</h3>
+        <label for="lawname">법조문 이름(ex. 형사일반, 도로교통법위반(음주운전)):</label>
+        <input type="text" id="lawname">
+        <button id="add-law-btn">법조문 ASP 불러오기</button>
+        <table class='law-table' id='law-table'>
+        </table>
+    </div>
+
+    <hr>
+
+    <div id="term-container">
+        <h3>사실 및 규칙</h3>
+        ASP term은 마침표로 끝나야 함<br>
+        - 올바른 분류 선택하기 <br>
+        - 판례 텍스트 원문과 최대한 같은 단어로, <br>
+        - 완결된 문장으로 작성<br>
+        <br>
+        <table class='asp-term-table' id='asp-term-table'>
+        </table>
+    </div>
+    <button id="add-term-btn">ASP 추가...</button><br>
+
+    <hr>
+
+    <div id="conclusion-container">
+        <h3>결론 (증명 목표)</h3>
+        증명 목표는 마침표 없이 상수로만 구성 (ex. innocent(defendant))<br>
+        - 판례 텍스트 원문과 최대한 같은 단어로, <br>
+        - 완결된 문장으로 작성<br>
+        <br>
+        <table class='asp-conclusion-table' id='asp-conclusion-table'>
+        </table>
+    </div>
+    <button id="add-conc-btn">결론 추가...</button><br>
+    <hr>
+
+    <button id="test-btn">실행 결과 보기</button>
+    <button id="tempsave-btn">임시저장</button>
+    <button id="submit-btn">DB에 등록하기</button>
+    <button id="reset-btn">화면 초기화</button>
+    <!-- <br> -->
+    <!-- <b>경고: DB에 등록하기 버튼은 해당 판례 번호에 저장된 내용을 덮어씌웁니다.</b> -->
+    <div id="log-msg" class="msgbox"></div>
+
+    <script>
+        function toggle(id_info) {
+            var x = document.getElementById(id_info);
+            if (x.style.display === "none") {
+                x.style.display = "table";
+            } else {
+                x.style.display = "none";
+            }
+        }
+        // up-to-date `delete-parent` button event handlers
+        function updateDeleteParentEventHandler() {
+            const deleteButtons = document.getElementsByClassName('delete-parent');
+
+            Array.from(deleteButtons).forEach( button => {
+                // add the event listener to each button
+                if (button.getAttribute('listener') !== 'true') {
+                    button.addEventListener('click', () => {
+                            button.closest('.element').remove()
+                    }); 
+                    button.setAttribute('listener', 'true');
+                }
+            });
+        }
+        // Function to add another aligned term of text inputs
+        function addTerm() {
+            const termContainer = document.getElementById('asp-term-table');
+            const alignedTerm = document.createElement('tr');
+            alignedTerm.classList.add('asp-term');
+            alignedTerm.classList.add('element');
+            alignedTerm.innerHTML = `
+                <td class="delete-parent" width="15px">✖️</td>
+                <td width="15px">
+                    <div class="move-up">🔼</div>
+                    <div class="move-down">🔽</div>
+                </td>
+                <td>
+                    <input type="text" class="term-comment" placeholder="자연어 설명"><br>
+                    <input type="text" class="term-input" placeholder="사실/규칙(ASP)">
+                </td>
+                <td width="75px">
+                    <select name="source" class="term-source">
+                        <option value="precedent">판결문</option>
+                        <option value="abduction">귀추법</option>
+                        <option value="commonsense">상식</option>
+                    </select>
+                    <span class="term-msg"></span>
+                </td>
+            `;
+            termContainer.appendChild(alignedTerm);
+            updateDeleteParentEventHandler();
+        }
+        function addConc() {
+            const termContainer = document.getElementById('asp-conclusion-table');
+            const alignedTerm = document.createElement('tr');
+            alignedTerm.classList.add('asp-conc');
+            alignedTerm.classList.add('element');
+            alignedTerm.innerHTML = `
+                <td class="delete-parent" width="3%">✖️</td>
+                <td width="15px">
+                    <div class="move-up">🔼</div>
+                    <div class="move-down">🔽</div>
+                </td>
+                <td>
+                    <input type="text" class="conc-comment" placeholder="자연어 설명"><br>
+                    <input type="text" class="conc-input" placeholder="증명 목표(ASP)">
+                </td>
+                <td width="75px">
+                    <select name="source" class="conc-source">
+                        <option value="precedent">판결문</option>
+                    </select>
+                    <span class="conc-msg"></span>
+                </td>
+            `;
+            termContainer.appendChild(alignedTerm);
+            updateDeleteParentEventHandler();
+        }
+
+        String.prototype.hashCode = function() {
+            var hash = 0,
+                i, chr;
+            if (this.length === 0) return hash;
+            for (i = 0; i < this.length; i++) {
+                chr = this.charCodeAt(i);
+                hash = ((hash << 5) - hash) + chr;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return hash;
+        }
+
+        async function addLaw(law_id) {
+            try {
+                const response = await fetch('/get_law_form?' + new URLSearchParams({
+                    law_id: law_id,
+                }));
+                data = await response.json();
+                if(Object.keys(data).length === 0) {
+                    alert("법령이 존재하지 않습니다.");
+                    return;
+                }
+                // term - add appropriate number of textboxes
+                const lawContainer = document.getElementById('law-table');
+                const alignedTerm = document.createElement('tr');
+                const law_hash_id = law_id.hashCode();
+                alignedTerm.classList.add('law');
+                alignedTerm.classList.add('element');
+                alignedTerm.innerHTML = `
+                    <td class="delete-parent" width="3%">✖️</td>
+                    <td width="95%">
+                        <b class="law-name" onclick=toggle(`+ law_hash_id +`)>` + data['lawname'] + `</b>
+                        <table class="law-asp" width="100%" id="`+law_hash_id+`">
+                        </table>
+                    </td>
+                `;
+                lawContainer.appendChild(alignedTerm);
+                // const law_asp = Array.from(document.getElementsByClassName("law-asp")).slice(-1)[0]
+                const law_asp = document.getElementById("" + law_hash_id)
+                updateDeleteParentEventHandler();
+                
+                for(var i=0; i < data['terms'].length; i++) {
+                    const alignedTerm = document.createElement('tr');
+                    alignedTerm.classList.add('asp-law-innerterm');
+                    alignedTerm.innerHTML = `
+                        <td>
+                            <input type="text" class="law-term-comment" disabled></input><br>
+                            <input type="text" class="law-term-input" disabled></input>
+                        </td>
+                        <td width="75px">
+                            <select name="source" class="law-term-source">
+                                <option value="precedent">법리</option>
+                            </select>
+                            <span class="term-msg"></span>
+                        </td>
+                    `;
+                    law_asp.appendChild(alignedTerm);
+                    Array.from(document.getElementsByClassName("law-term-comment")).slice(-1)[0].value = data['terms'][i]['comment'];
+                    Array.from(document.getElementsByClassName("law-term-input")).slice(-1)[0].value = data['terms'][i]['asp'];
+                    // Initially hide law element
+                    var x = document.getElementById(law_hash_id);
+                    x.style.display = "none";
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        function resetScreen() {
+            // Reset number/input value of terms/concs
+            const elements = document.getElementsByClassName('element');
+            Array.from(elements).forEach((e) => e.remove());
+            addTerm();
+            addConc();
+            // Reset log screen
+            resetLogs();
+        }
+        function resetLogs() {
+            // Clean log outputs
+            const termMsg = document.getElementsByClassName('term-msg');
+            for (let i = 0; i < termMsg.length; i++) {
+                termMsg[i].textContent = "";
+            }
+            const concMsg = document.getElementsByClassName('conc-msg');
+            for (let i = 0; i < concMsg.length; i++) {
+                concMsg[i].textContent = "";
+            }
+            const logContainer = document.getElementById('log-msg');
+            logContainer.innerHTML = "";
+        }
+
+        // Function to handle form submission
+        function parseData() {
+            const courtName = document.getElementById('courtname').value;
+            const caseNum = document.getElementById('casenum').value;
+            const laws = [];
+            const terms = [];
+            const concs = [];
+
+            const lawNames = document.getElementsByClassName('law-name');
+            for (var i =0; i < lawNames.length; i++) {
+                laws.push({
+                    name: lawNames[i].innerHTML,
+                });
+            }
+
+            const lawtermInputs = document.getElementsByClassName('law-term-input');
+            const lawtermComments = document.getElementsByClassName('law-term-comment');
+            const lawtermSources = document.getElementsByClassName('law-term-source');
+            for (var i =0; i < lawtermInputs.length; i++) {
+                terms.push({
+                    asp: lawtermInputs[i].value,
+                    comment: lawtermComments[i].value,
+                    source: lawtermSources[i].value,
+                    fromPrecedent: false
+                });
+            }
+
+            const termInputs = document.getElementsByClassName('term-input');
+            const termComments = document.getElementsByClassName('term-comment');
+            const termSources = document.getElementsByClassName('term-source');
+            for (var i =0; i < termInputs.length; i++) {
+                terms.push({
+                    asp: termInputs[i].value,
+                    comment: termComments[i].value,
+                    source: termSources[i].value,
+                    fromPrecedent: true
+                });
+            }
+
+            const concInputs = document.getElementsByClassName('conc-input');
+            const concComments = document.getElementsByClassName('conc-comment');
+            const concSources = document.getElementsByClassName('conc-source');
+            for (var i =0; i < concInputs.length; i++) {
+                concs.push({
+                    asp: concInputs[i].value,
+                    comment: concComments[i].value,
+                    source: concSources[i].value
+                });
+            }
+
+            return {
+                courtname: courtName,
+                casenum: caseNum,
+                laws: laws,
+                terms: terms,
+                concs: concs
+            };
+        }
+
+        async function updateLogScreen(response) {
+            if (response.ok) {
+                const responseData = await response.json();
+                // Process the response data if needed
+                // add message to term-input form
+                const termMsg = document.getElementsByClassName('term-msg');
+                for (let i = 0; i < termMsg.length; i++) {
+                    switch(responseData["program_parse_success"][i]['code']) {
+                        case 0: msg = '✅'; break;
+                        default: msg = '❌ ' + responseData["program_parse_success"][i]['msg']; break;
+                    }
+                    termMsg[i].textContent = msg;
+                }
+                // add message to conc-input form
+                const concMsg = document.getElementsByClassName('conc-msg');
+                for (let i = 0; i < concMsg.length; i++) {
+                    switch(responseData["conclusion_parse_success"][i]['code']) {
+                        case 0: msg = '✅'; break;
+                        default: msg = '❌ ' + responseData["conclusion_parse_success"][i]['msg']; break;
+                    }
+                    concMsg[i].textContent = msg;
+                }
+                // create log message
+                aspResult = responseData['asp_result'];
+                let logMsg = '----- ASP -----<br>';
+                logMsg += "풀이 결과: " + aspResult['satisfactory'] + "<br>";
+                conc_idx = 0
+                for(const conc of aspResult['proofs']) {
+                    prooftext = "▶️<b onclick='toggle(\"proof_" + conc_idx + "\")'>" +conc['conclusion']+ "</b> " + (conc['proved'] ? '✅' : '❌') + "<br>" +
+                        "<div id='proof_" + conc_idx + "' style='display:none;'>" + 
+                            conc['tree'] +
+                        "</div>";
+                    conc_idx++;
+                    logMsg += prooftext;
+                }
+                logMsg += '<br> ----- Validity check ----- <br>'
+                logMsg += '테스트 통과 여부: ' + (responseData['validity'] == 0? "✅" : "❌") + "<br>"
+                for(const message of responseData['validity_message']) {
+                    logMsg += '❌ ' + message + '<br>'
+                }
+                logMsg += '<br> ----- DB update ----- <br>'
+                for(const message of responseData['database_message']) {
+                    logMsg += '- ' + message + '<br>'
+                }
+                const logContainer = document.getElementById('log-msg');
+                logContainer.innerHTML = logMsg;
+            } else {
+                console.error('Error:', response.status);
+            }
+        }
+
+        async function handleTestSubmit() {
+            data = parseData()
+            resetLogs()
+            try {
+                const response = await fetch('/test_asp', {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                await updateLogScreen(response)
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function handleTempSave() {
+            data = parseData()
+            resetLogs()
+            try {
+                const response = await fetch('/tempsave_case_db', {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    const responseData = await response.json();
+                    logMsg = '<br> ----- DB update(temp) ----- <br>'
+                    for(const message of responseData['database_message']) {
+                        logMsg += '- ' + message + '<br>'
+                    }
+                    const logContainer = document.getElementById('log-msg');
+                    logContainer.innerHTML = logMsg;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function handleUpdateDB() {
+            data = parseData()
+            resetLogs()
+            try {
+                const response = await fetch('/update_case_db', {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                await updateLogScreen(response)
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadPrecedentData() {
+            data = parseData()
+            case_id = data["courtname"] + "-" + data["casenum"]
+            try {
+                const response = await fetch('/get_case_form?' + new URLSearchParams({
+                    case_id: case_id,
+                }));
+                data = await response.json();
+                if(Object.keys(data).length === 0) {
+                    alert("판례가 존재하지 않습니다.");
+                    return;
+                }
+                // reset screen
+                resetScreen();
+
+                // case info
+                document.getElementById('courtname').value = data["courtname"];
+                document.getElementById('casenum').value = data["casenum"];
+
+                // law - update contents
+                for(let law_id of data["laws"]) {
+                    addLaw(law_id);
+                }
+
+                // term - add appropriate number of textboxes
+                term_len = data['terms'].length;
+                while(document.getElementsByClassName('term-input').length < term_len) {
+                    addTerm();
+                }
+                // term - update contents
+                const termInputs = document.getElementsByClassName('term-input');
+                const termComments = document.getElementsByClassName('term-comment');
+                const termSources = document.getElementsByClassName('term-source');
+                for (var i = 0; i < term_len; i++) {
+                    term = data['terms'][i];
+                    termInputs[i].value = term['asp'];
+                    termComments[i].value = term['comment'];
+                    termSources[i].value = term['source'];
+                }
+
+                // conc - add appropriate number of textboxes
+                conc_len = data['concs'].length;
+                while(document.getElementsByClassName('conc-input').length < conc_len) {
+                    addConc();
+                }
+                // conc - update contents
+                const concInputs = document.getElementsByClassName('conc-input');
+                const concComments = document.getElementsByClassName('conc-comment');
+                const concSources = document.getElementsByClassName('conc-source');
+                for (var i = 0; i < conc_len; i++) {
+                    conc = data['concs'][i];
+                    concInputs[i].value = conc['asp'];
+                    concComments[i].value = conc['comment'];
+                    concSources[i].value = conc['source'];
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function loadLawData() {
+            law_id = document.getElementById('lawname').value;
+            addLaw(law_id);
+        }
+
+        // Add event listeners to buttons
+        document.getElementById('load-case-form-btn').addEventListener('click', loadPrecedentData);
+        document.getElementById('add-term-btn').addEventListener('click', addTerm);
+        document.getElementById('add-conc-btn').addEventListener('click', addConc);
+        document.getElementById('add-law-btn').addEventListener('click', loadLawData);
+        document.getElementById('test-btn').addEventListener('click', handleTestSubmit);
+        document.getElementById('tempsave-btn').addEventListener('click', handleTempSave);
+        document.getElementById('submit-btn').addEventListener('click', handleUpdateDB);
+        document.getElementById('reset-btn').addEventListener('click', resetScreen);
+        document.addEventListener("DOMContentLoaded", function() {
+            // Up/down button            
+            Array.from(document.getElementsByTagName("table")).forEach( table => {
+                table.addEventListener("click", function(event) {
+                    const target = event.target;
+                    const row = target.closest("tr");
+                    
+                    if (target.classList.contains("move-up")) {
+                        if (row && row.previousElementSibling) {
+                            table.insertBefore(row, row.previousElementSibling);
+                        }
+                    } else if (target.classList.contains("move-down")) {
+                        if (row && row.nextElementSibling) {
+                            table.insertBefore(row.nextElementSibling, row);
+                        }
+                    }
+                });
+            });
+        });
+        addTerm(); addConc();
+    </script>
+</body>
+</html>

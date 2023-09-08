@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>L⁴ Annotator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 13px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .nl-asp-term {
+            display: flex;
+            align-items: center;
+        }
+        .conclusion {
+            display: flex;
+            align-items: center;
+        }
+
+        .asp-term input {
+            margin-right: 10px;
+            width: 97%;
+        }
+        .asp-conc input {
+            margin-right: 10px;
+            width: 97%;
+        }
+        .delete-parent {
+            cursor: pointer;
+        }
+
+        #term-container {
+            margin-top: 20px;
+        }
+        #conc-container {
+            margin-top: 20px;
+        }
+
+        #add-term-btn {
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #add-conc-btn {
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        #submit-btn {
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .msgbox {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid black;
+            font-family: monospace;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1> L⁴(LBox Legal Logic Language) Annotator : 법령</h1>
+    <a href="/case.html">판례 태깅하기</a> | <a href="/sandbox.html">자유 편집하기</a>
+    <h3>법령 정보</h3>
+    <label for="lawname">법령명 (띄어쓰기 없이 - 형사일반, 도로교통법위반(음주운전), ...)</label>
+    <input type="text" id="lawname">
+    <button id="load-case-form-btn">법령 불러오기</button>
+
+    <hr>
+
+    <div id="term-container">
+        <h3>규칙</h3>
+        ASP term은 마침표로 끝나야 함<br>
+        - 설명은 법령 원문/대법원 판례와 최대한 같은 단어로, <br>
+        - 완결된 문장으로 작성<br>
+        <br>
+        <table class='asp-term-table' id='asp-term-table'>
+        </table>
+    </div>
+    <button id="add-term-btn">ASP 추가...</button><br>
+
+    <hr>
+
+    <button id="submit-btn">DB에 등록하기</button>
+    <button id="reset-btn">화면 초기화</button>
+    <!-- <br> -->
+    <!-- <b>경고: DB에 등록하기 버튼은 해당 판례 번호에 저장된 내용을 덮어씌웁니다.</b> -->
+    <div id="log-msg" class="msgbox"></div>
+
+    <script>
+        // up-to-date `delete-parent` button event handlers
+        function updateDeleteParentEventHandler() {
+            const deleteButtons = document.getElementsByClassName('delete-parent');
+
+            Array.from(deleteButtons).forEach( button => {
+                // add the event listener to each button
+                if (button.getAttribute('listener') !== 'true') {
+                    button.addEventListener('click', () => {
+                            button.closest('.element').remove()
+                    }); 
+                    button.setAttribute('listener', 'true');
+                }
+            });
+        }
+        // Function to add another aligned term of text inputs
+        function addTerm() {
+            const termContainer = document.getElementById('asp-term-table');
+            const alignedTerm = document.createElement('tr');
+            alignedTerm.classList.add('asp-term');
+            alignedTerm.classList.add('element');
+            alignedTerm.innerHTML = `
+                <td class="delete-parent" width="15px">✖️</td>
+                <td width="15px">
+                    <div class="move-up">🔼</div>
+                    <div class="move-down">🔽</div>
+                </td>
+                <td>
+                    <input type="text" class="term-comment" placeholder="자연어 설명"><br>
+                    <input type="text" class="term-input" placeholder="사실/규칙(ASP)">
+                </td>
+                <td width="50px">
+                    <select name="source" class="term-source">
+                        <option value="law">법리</option>
+                    </select>
+                    <span class="term-msg"></span>
+                </td>
+            `;
+            termContainer.appendChild(alignedTerm);
+            updateDeleteParentEventHandler();
+        }
+        function resetScreen() {
+            // Reset number/input value of terms/concs
+            const termInputs = document.getElementsByClassName('asp-term');
+            Array.from(termInputs).forEach((e) => e.remove());
+            addTerm();
+
+            // Clean log outputs
+            const termMsg = document.getElementsByClassName('term-msg');
+            for (let i = 0; i < termMsg.length; i++) {
+                termMsg[i].textContent = "";
+            }
+            const logContainer = document.getElementById('log-msg');
+            logContainer.innerHTML = "";
+        }
+
+        // Function to handle form submission
+        function parseData() {
+            const lawName = document.getElementById('lawname').value;
+            const terms = [];
+
+            const termInputs = document.getElementsByClassName('term-input');
+            const termComments = document.getElementsByClassName('term-comment');
+            const termSources = document.getElementsByClassName('term-source');
+            for (var i =0; i < termInputs.length; i++) {
+                terms.push({
+                    asp: termInputs[i].value,
+                    comment: termComments[i].value,
+                    source: termSources[i].value
+                });
+            }
+            return {
+                lawname: lawName,
+                terms: terms
+            };
+        }
+
+        async function updateLogScreen(response) {
+            if (response.ok) {
+                const responseData = await response.json();
+                // Process the response data if needed
+                // add message to term-input form
+                const termMsg = document.getElementsByClassName('term-msg');
+                for (let i = 0; i < termMsg.length; i++) {
+                    switch(responseData["program_parse_success"][i]['code']) {
+                        case 0: msg = '✅'; break;
+                        default: msg = '❌ ' + responseData["program_parse_success"][i]['msg']; break;
+                    }
+                    termMsg[i].textContent = msg;
+                }
+                // create log message
+                aspResult = responseData['asp_result'];
+                let logMsg = '';
+                logMsg += '<br> ----- Validity check ----- <br>'
+                logMsg += '테스트 통과 여부: ' + (responseData['validity'] == 0? "✅" : "❌") + "<br>"
+                for(const message of responseData['validity_message']) {
+                    logMsg += '❌ ' + message + '<br>'
+                }
+                logMsg += '<br> ----- DB update ----- <br>'
+                for(const message of responseData['database_message']) {
+                    logMsg += '- ' + message + '<br>'
+                }
+                const logContainer = document.getElementById('log-msg');
+                logContainer.innerHTML = logMsg;
+            } else {
+                console.error('Error:', response.status);
+            }
+        }
+
+        async function handleUpdateDB() {
+            data = parseData()
+            try {
+                const response = await fetch('/update_law_db', {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                await updateLogScreen(response)
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadLawData() {
+            data = parseData()
+            law_id = data['lawname']
+            try {
+                const response = await fetch('/get_law_form?' + new URLSearchParams({
+                    law_id: law_id,
+                }));
+                data = await response.json();
+                if(Object.keys(data).length === 0) {
+                    alert("법령이 존재하지 않습니다.");
+                    return;
+                }
+                // reset screen
+                resetScreen();
+
+                // law info
+                document.getElementById('lawname').value = data["lawname"];
+
+                // term - add appropriate number of textboxes
+                term_len = data['terms'].length;
+                while(document.getElementsByClassName('term-input').length < term_len) {
+                    addTerm();
+                }
+                // term - update contents
+                const termInputs = document.getElementsByClassName('term-input');
+                const termComments = document.getElementsByClassName('term-comment');
+                const termSources = document.getElementsByClassName('term-source');
+                for (var i = 0; i < term_len; i++) {
+                    term = data['terms'][i];
+                    termInputs[i].value = term['asp'];
+                    termComments[i].value = term['comment'];
+                    termSources[i].value = term['source'];
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Add event listeners to buttons
+        document.getElementById('load-case-form-btn').addEventListener('click', loadLawData);
+        document.getElementById('add-term-btn').addEventListener('click', addTerm);
+        document.getElementById('submit-btn').addEventListener('click', handleUpdateDB);
+        document.getElementById('reset-btn').addEventListener('click', resetScreen);
+        document.addEventListener("DOMContentLoaded", function() {
+            // Up/down button            
+            Array.from(document.getElementsByTagName("table")).forEach( table => {
+                table.addEventListener("click", function(event) {
+                    const target = event.target;
+                    const row = target.closest("tr");
+                    console.log(row)
+                    
+                    if (target.classList.contains("move-up")) {
+                        if (row && row.previousElementSibling) {
+                            table.insertBefore(row, row.previousElementSibling);
+                        }
+                    } else if (target.classList.contains("move-down")) {
+                        if (row && row.nextElementSibling) {
+                            table.insertBefore(row.nextElementSibling, row);
+                        }
+                    }
+                });
+            });
+        });
+        addTerm();
+    </script>
+</body>
+</html>

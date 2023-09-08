@@ -1,0 +1,12 @@
+# Answer set programming
+clingo
+
+# Database
+pymysql
+pandas
+
+# Langchain & Custom vectorizer
+langchain
+
+# Web server
+flask

@@ -1,0 +1,3 @@
+[submodule "src/scasp"]
+	path = src/scasp
+	url = https://github.com/jinulee-v/sCASP.git

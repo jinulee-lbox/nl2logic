@@ -1,0 +1,17 @@
+# Unused directories
+test
+data
+
+# Python gitignores
+__pycache__
+
+# SWI-Prolog gitignores
+
+# Execution logs
+nohup.out
+
+# Config files with credential informations
+config.yaml
+
+# Compiled executables
+src/scasp/scasp
