@@ -50,11 +50,11 @@ def set_logger(task: str):
         logging.StreamHandler()
     ]
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(_logging_level[log_config.level])
     root_logger.handlers.clear()
     for h in handlers:
         h.setFormatter(f)
-        h.setLevel(logging.INFO)
+        h.setLevel(_logging_level[log_config.level])
         root_logger.addHandler(h)
 
     logging.info("Load config / set logger complete")
