@@ -1,1 +1,1 @@
-python web/app.py
+nohup python web/app.py >/dev/null 2>/dev/null &
