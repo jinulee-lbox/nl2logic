@@ -9,6 +9,7 @@ from clingo.solving import *
 
 from .scasp_postprocess import *
 from .utils import SCASP_PATH
+import logging
 
 from datetime import datetime
 
@@ -18,7 +19,7 @@ def get_proof_tree(preprocessed_program: str, conc_symbol: str, recursion_level=
     # Prevent catastrophic recursion
     if recursion_level >= TREE_RECURSION_LIMIT:
         return JustificationTree("query\n  " + conc_symbol), True
-
+    logging.debug(f"?- {conc_symbol}.")
     with tempfile.NamedTemporaryFile('w',encoding="UTF-8") as fp:
         # Write program with query to tempfile
         fp.write(preprocessed_program + "\n?- " + conc_symbol + ".\n")

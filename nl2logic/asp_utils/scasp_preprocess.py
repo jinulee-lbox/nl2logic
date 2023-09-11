@@ -292,6 +292,59 @@ def get_explicit_negated_head(rule:AST) -> AST :
     # Default
     return None
     
+def get_explicit_dual(rule:AST) -> AST :
+    assert rule.ast_type == ASTType.Rule
+    rule = deepcopy(rule)
+
+    head = rule.head
+    if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
+        if head.atom.ast_type == ASTType.BooleanConstant:
+            return rule # Do nothing
+        raise ValueError("All rule heads must be non-conditional simple literals")
+    
+    if head.sign == Sign.NoSign:
+        original_head = deepcopy(head)
+        # Flip to body as integrity constriant
+        if head.atom.symbol.ast_type == ASTType.Function:
+            # not a() :-
+            head.atom.symbol.name = "not_neg_" + head.atom.symbol.name
+            head.sign = Sign.NoSign
+            return Rule(
+                rule.location,
+                head,
+                [original_head]
+            )
+        elif head.atom.symbol.ast_type == ASTType.SymbolicTerm:
+            # not a :-
+            head.atom.symbol.symbol.name = "not_neg_" + head.atom.symbol.symbol.name
+            head.sign = Sign.NoSign
+            return Rule(
+                rule.location,
+                head,
+                [original_head]
+            )
+        elif head.atom.symbol.ast_type == ASTType.UnaryOperation and head.atom.symbol.operator_type == UnaryOperator.Minus:
+            # not -a() :-
+            # Get the (classically) negated term,
+            head.atom.symbol = head.atom.symbol.argument
+            if head.atom.symbol.ast_type == ASTType.Function:
+                # not -a() :-
+                head.atom.symbol.name = "not_" + head.atom.symbol.name
+                head.sign = Sign.NoSign
+                return Rule(
+                    rule.location,
+                    head,
+                    [original_head]
+                )
+            elif head.atom.symbol.ast_type == ASTType.SymbolicTerm:
+                # not -a :-
+                head.atom.symbol.symbol.name = "not_" + head.atom.symbol.symbol.name
+                head.sign = Sign.NoSign
+                return Rule(
+                    rule.location,
+                    head,
+                    [original_head]
+                )
 
 def flip_negated_heads(rule:AST) -> AST :
     assert rule.ast_type == ASTType.Rule
@@ -398,6 +451,9 @@ def scasp_preprocess(term_str):
                     explicit_negated_head = get_explicit_negated_head(t3)
                     if explicit_negated_head is not None:
                         new_rules += str(explicit_negated_head) + "\n"
+                    explicit_dual = get_explicit_dual(t3)
+                    if explicit_dual is not None:
+                        new_rules += str(explicit_dual) + "\n"
 
                     t3 = flip_negated_heads(t3)
                     t3 = translate_numeric_string(t3)
