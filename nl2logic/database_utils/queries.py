@@ -54,7 +54,7 @@ def db_insert_case(data):
     data['terms'] = [d for d in data['terms'] if d['fromPrecedent']]
 
     # generate ASP from form data
-    full_asp = json.dumps(data)
+    full_asp = json.dumps(data, ensure_ascii=False)
 
     # Add case data with case_id / ASP code
     db.query(f"""
@@ -165,7 +165,7 @@ def db_insert_case_temp(data):
     data['terms'] = [d for d in data['terms'] if d['fromPrecedent']]
 
     # generate ASP from form data
-    full_asp = json.dumps(data)
+    full_asp = json.dumps(data, ensure_ascii=False)
 
     # Add case data with case_id / ASP code
     db.query(f"""
@@ -253,7 +253,7 @@ def db_insert_law(data, case_for_law=None):
     law_id_text = data['lawname']
 
     # generate ASP from form data
-    full_asp = json.dumps(data)
+    full_asp = json.dumps(data, ensure_ascii=False)
 
     # Add law data with law_id / ASP code
     db.query(f"""
