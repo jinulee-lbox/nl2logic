@@ -6,7 +6,7 @@ import json
 import logging
 
 from nl2logic.validity import validity_check
-from nl2logic.asp_utils import *
+from nl2logic.logic_utils import *
 from nl2logic.database_utils import *
 from nl2logic.config import nl2logic_config as config
 from nl2logic.config import set_logger
