@@ -1,6 +1,0 @@
-[submodule "src/scasp"]
-	path = src/scasp
-	url = https://github.com/jinulee-v/sCASP.git
-[submodule "scasp"]
-	path = scasp
-	url = https://github.com/jinulee-v/sCASP.git
