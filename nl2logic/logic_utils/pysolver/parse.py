@@ -25,10 +25,10 @@ def parse_program(program: str):
             label = rule_str.replace("% ", "")
             continue
 
-        rule_str = re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,) ])", f"\g<1>\g<2>_{rule_idx}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
+        rule_str = re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", f"\g<1>\g<2>_{rule_idx}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
         anonym_idx = 0
         while True:
-            rule_str, replaced = re.subn(r"([,( ])_(?=[,) ])", f"\g<1>_Anon_{rule_idx}_{anonym_idx}", rule_str, count=1)
+            rule_str, replaced = re.subn(r"([,( ])_(?=[,)]| [+\-*/%><=!])", f"\g<1>_Anon_{rule_idx}_{anonym_idx}", rule_str, count=1)
             if replaced == 0:
                 break
             anonym_idx += 1

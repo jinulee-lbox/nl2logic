@@ -95,7 +95,7 @@ class JustificationTree():
     
     def __str__(self):
         result_str = self.root._pprint([False], -1)
-        return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,) ])", "\g<1>_", result_str)
+        return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", result_str)
 
     def transform(self, function):
         self.root._transform(function)
