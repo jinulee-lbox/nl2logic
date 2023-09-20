@@ -6,16 +6,16 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-from .scasp_preprocess import scasp_preprocess
-from .scasp_run import get_proof_tree
+from .pysolver.preprocess import preprocess
+from .pysolver import get_proof_tree_from_preprocessed_program
 
 def asp_parse_program(terms: List[str]):
     success = []
     parsed_program = ""
     for term in terms:
-        # Parsing.
+        # # Parsing.
         try:
-            parsed_program += scasp_preprocess(term) # Unpack pooling and #count aggregates, negated heads to constraints, ...
+            parsed_program += preprocess(term) # Unpack pooling and #count aggregates, negated heads to constraints, ...
         except Exception as e:
             success.append({
                 'code': 10,
@@ -63,15 +63,14 @@ def asp_parse_conclusion(conclusions: List[str]):
     success = []
     conc_symbols = []
 
-    parsed_conclusion = ""
-
     for conc in conclusions:
         try:
             # buf = []
             # conc_symbols.append(parse_term(conc, logger=_intercept_message(buf)))
-            conc = parse_term(conc)
+            result = []
+            parse_string(conc + ".", result.append)
+            conc = result[1]
             conc_symbols.append(conc)
-            parsed_conclusion += "?- " + str(conc) + "."
             success.append({
                 'code': 0,
                 'msg': "Success"
@@ -125,10 +124,11 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
     proofs = []
     flag_success = True
     logging.debug(preprocessed_program)
+    proved_goal_table = dict() # Cache for already proven goals
     for conc_symbol in conc_symbols:
         conc_symbol = str(conc_symbol)
         # logging.debug(conc_symbol)
-        tree, posproved = get_proof_tree(preprocessed_program, conc_symbol)
+        tree, posproved = get_proof_tree_from_preprocessed_program(preprocessed_program, conc_symbol, proved_goal_table)
         if posproved:
             tree = str(tree)
             # HTML specific formatting
@@ -141,7 +141,11 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                 "tree": tree
             })
         else:
-            tree, negproved = get_proof_tree(preprocessed_program, "not " + conc_symbol)
+            if conc_symbol.startswith("not "):
+                new_conc_symbol = conc_symbol.replace("not ", "")
+            else:
+                new_conc_symbol = "not " + conc_symbol
+            tree, negproved = get_proof_tree_from_preprocessed_program(preprocessed_program, new_conc_symbol, proved_goal_table)
             flag_success = False
             if negproved:
                 tree = str(tree)

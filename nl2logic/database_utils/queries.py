@@ -1,5 +1,5 @@
 from .db_utils import DatabaseAPI
-from ..asp_utils import asp_extract_const_list
+from ..logic_utils import asp_extract_const_list
 from pandas import DataFrame
 import json
 
@@ -360,4 +360,26 @@ def db_get_law_from_case(case_id, temp=False):
         db.close()
         return law_names
     else:
+        db.close()
         return []
+
+def db_get_all_asp_tagged_case():
+    # Search for all asp_tagged case, mostly used for Langchain application
+    db = DatabaseAPI('nl2logic')
+    case_list = db.query("""
+    SELECT * FROM data_case
+    """) # List of Dict
+    case_ids = ['"' + case["case_id"] + '"' for case in case_list]
+
+    raw_case_data = db.query(f"""
+    SELECT * FROM data_raw_case_info WHERE case_id IN ({','.join(case_ids)})
+    """)
+    raw_case_data_dict = dict()
+    for raw_case in raw_case_data:
+        raw_case_data_dict[raw_case["case_id"]] = raw_case
+    
+    for case in case_list:
+        case.update(raw_case_data_dict[case["case_id"]])
+
+    db.close()
+    return case_list

@@ -2,7 +2,7 @@ from typing import *
 import requests
 import re
 
-from .asp_utils import asp_reformat_str
+from .logic_utils import asp_reformat_str
 
 def lbox_case_exists(case_id):
     url = "https://lbox.kr/api/case"

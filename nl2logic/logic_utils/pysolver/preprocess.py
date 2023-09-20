@@ -223,137 +223,96 @@ def unpack_body_pool(rule:AST) -> str :
 
     return new_rules
 
-def ground_negated_head(rule:AST) -> AST :
-    # If head is negated, add dummy predicate to ground
-    # not a(X, Y, Z) :-
-    # => a(_x, _x, _x).
+def get_dual(rule: AST) -> List[AST]:
     assert rule.ast_type == ASTType.Rule
     rule = deepcopy(rule)
 
     head = rule.head
     if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
         if head.atom.ast_type == ASTType.BooleanConstant:
-            return rule # Do nothing
+            return [] # Do nothing
         raise ValueError("All rule heads must be non-conditional simple literals")
-    
     if head.sign == Sign.Negation:
-        if head.atom.symbol.ast_type == ASTType.Function:
-            head.sign = Sign.NoSign
-            head.atom.symbol.arguments = [
-                SymbolicTerm(
-                    x.location,
-                    Function("_x", [], True)
-                )
-                for x in head.atom.symbol.arguments
-            ]
-            rule.body = [] # Create a `fact`
-            return rule
+        return [] # If rule is `not a :- ...` -> do not create duals
+    # head.sign = Sign.NoSign if head.sign == Sign.Negation else Sign.Negation
+    head.sign = Sign.Negation
+
+    # Flip body literal one by one as in s(CASP).
+    body_cnt = len(rule.body)
+    dual_rules = []
+    for i in range(body_cnt):
+        body_lits = []
+        # append body literals
+        for j in range(i):
+            body_lits.append(rule.body[j])
+        # flip i-th body literal
+        dual_body_lit = deepcopy(rule.body[i])
+        dual_body_lit.sign = Sign.NoSign if dual_body_lit.sign == Sign.Negation else Sign.Negation
+        body_lits.append(dual_body_lit)
+        # create new rules
+        dual_rules.append(Rule(
+            rule.location,
+            head,
+            body_lits
+        ))
+    return dual_rules
     
-    return None
-
-
-def get_explicit_negated_head(rule:AST) -> AST :
+def get_explicit_dual(rule:AST) -> List[AST] :
     assert rule.ast_type == ASTType.Rule
     rule = deepcopy(rule)
 
     head = rule.head
     if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
         if head.atom.ast_type == ASTType.BooleanConstant:
-            return rule # Do nothing
-        raise ValueError("All rule heads must be non-conditional simple literals")
-    
-    if head.sign == Sign.Negation:
-        # Flip to body as integrity constriant
-        if head.atom.symbol.ast_type == ASTType.Function:
-            # not a() :-
-            head.atom.symbol.name = "not_" + head.atom.symbol.name
-            head.sign = Sign.NoSign
-            return rule
-        elif head.atom.symbol.ast_type == ASTType.SymbolicTerm:
-            # not a :-
-            head.atom.symbol.symbol.name = "not_" + head.atom.symbol.symbol.name
-            head.sign = Sign.NoSign
-            return rule
-        elif head.atom.symbol.ast_type == ASTType.UnaryOperation and head.atom.symbol.operator_type == UnaryOperator.Minus:
-            # not -a() :-
-            # Get the (classically) negated term,
-            head.atom.symbol = head.atom.symbol.argument
-            if head.atom.symbol.ast_type == ASTType.Function:
-                # not -a() :-
-                head.atom.symbol.name = "not_neg_" + head.atom.symbol.name
-                head.sign = Sign.NoSign
-                return rule
-            elif head.atom.symbol.ast_type == ASTType.SymbolicTerm:
-                # not -a :-
-                head.atom.symbol.symbol.name = "not_neg_" + head.atom.symbol.symbol.name
-                head.sign = Sign.NoSign
-                return rule
-            
-    # Default
-    return None
-    
-def get_explicit_dual(rule:AST) -> AST :
-    assert rule.ast_type == ASTType.Rule
-    rule = deepcopy(rule)
-
-    head = rule.head
-    if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
-        if head.atom.ast_type == ASTType.BooleanConstant:
-            return rule # Do nothing
+            return [] # Do nothing
         raise ValueError("All rule heads must be non-conditional simple literals")
     
     if head.sign == Sign.NoSign:
         original_head = deepcopy(head)
         # Flip to body as integrity constriant
-        if head.atom.symbol.ast_type == ASTType.Function:
+        if head.atom.symbol.ast_type in [ASTType.Function, ASTType.SymbolicTerm]:
             # not a() :-
-            head.atom.symbol.name = "not_neg_" + head.atom.symbol.name
-            head.sign = Sign.NoSign
-            return Rule(
+            head.atom.symbol = UnaryOperation(
+                head.location,
+                UnaryOperator.Minus,
+                deepcopy(head)
+            )
+            head.sign = Sign.Negation
+            return [Rule(
                 rule.location,
                 head,
                 [original_head]
-            )
-        elif head.atom.symbol.ast_type == ASTType.SymbolicTerm:
-            # not a :-
-            head.atom.symbol.symbol.name = "not_neg_" + head.atom.symbol.symbol.name
-            head.sign = Sign.NoSign
-            return Rule(
-                rule.location,
-                head,
-                [original_head]
-            )
+            )]
         elif head.atom.symbol.ast_type == ASTType.UnaryOperation and head.atom.symbol.operator_type == UnaryOperator.Minus:
             # not -a() :-
             # Get the (classically) negated term,
             head.atom.symbol = head.atom.symbol.argument
             if head.atom.symbol.ast_type == ASTType.Function:
                 # not -a() :-
-                head.atom.symbol.name = "not_" + head.atom.symbol.name
-                head.sign = Sign.NoSign
-                return Rule(
+                head.sign = Sign.Negation
+                return [Rule(
                     rule.location,
                     head,
                     [original_head]
-                )
+                )]
             elif head.atom.symbol.ast_type == ASTType.SymbolicTerm:
                 # not -a :-
-                head.atom.symbol.symbol.name = "not_" + head.atom.symbol.symbol.name
-                head.sign = Sign.NoSign
-                return Rule(
+                head.sign = Sign.Negation
+                return [Rule(
                     rule.location,
                     head,
                     [original_head]
-                )
+                )]
 
-def flip_negated_heads(rule:AST) -> AST :
+def get_constraints(rule:AST) -> [AST] :
     assert rule.ast_type == ASTType.Rule
     rule = deepcopy(rule)
+    constraints = []
 
     head = rule.head
     if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
         if head.atom.ast_type == ASTType.BooleanConstant:
-            return rule # Do nothing
+            return [] # Do nothing
         raise ValueError("All rule heads must be non-conditional simple literals")
     
     if head.sign == Sign.Negation:
@@ -361,10 +320,18 @@ def flip_negated_heads(rule:AST) -> AST :
         head.sign = Sign.NoSign
         rule.body.append(deepcopy(head))
         rule.head = BooleanConstant(0)
-    elif head.sign == Sign.DoubleNegation:
-        head.sign = Sign.NoSign
-    
-    return rule
+        constraints.append(rule)
+    elif head.sign == Sign.NoSign and head.atom.symbol.ast_type == ASTType.UnaryOperation and head.atom.symbol.operator_type == UnaryOperator.Minus:
+        # -a(X) -> new constraints!!!
+        constraints.append(Rule(
+            location=rule.location,
+            head = BooleanConstant(0),
+            body = [
+                deepcopy(head.atom.symbol),
+                deepcopy(head.atom.symbol.argument)
+            ] # -a and a cannot hold together!!
+        ))
+    return constraints
 
 def translate_numeric_string(rule:AST) -> AST:
     # Recursive search, and apply `utils.convert_numeric_string_to_int` for all str
@@ -398,7 +365,10 @@ def translate_numeric_string(rule:AST) -> AST:
         return new_term
 
     if rule.head.ast_type == ASTType.Literal:
-        rule.head.atom.symbol = convert_num_str(rule.head.atom.symbol)
+        if rule.head.atom.ast_type == ASTType.BooleanConstant:
+            pass # Do nothing
+        else:
+            rule.head.atom.symbol = convert_num_str(rule.head.atom.symbol)
     elif rule.head.ast_type == ASTType.BooleanConstant:
         pass # do nothing
 
@@ -411,7 +381,7 @@ def translate_numeric_string(rule:AST) -> AST:
                 guard.term = convert_num_str(guard.term)
     return rule
 
-def scasp_preprocess(term_str):
+def preprocess(term_str):
     """Translate s(CASP) format with...
     - Unpack OR statement aggregates
     - Unpack pooling
@@ -444,28 +414,17 @@ def scasp_preprocess(term_str):
                 unpacked_body_pool_terms = unpack_body_pool(t2)
 
                 for t3 in unpacked_body_pool_terms:
-                    dummy_grounder = ground_negated_head(t3)
-                    if dummy_grounder is not None:
-                        new_rules += str(dummy_grounder) + "\n"
-
-                    explicit_negated_head = get_explicit_negated_head(t3)
-                    if explicit_negated_head is not None:
-                        new_rules += str(explicit_negated_head) + "\n"
-                    explicit_dual = get_explicit_dual(t3)
-                    if explicit_dual is not None:
-                        new_rules += str(explicit_dual) + "\n"
-
-                    t3 = flip_negated_heads(t3)
                     t3 = translate_numeric_string(t3)
                     new_rules += str(t3) + "\n"
 
-    # replace `; ` to `, `
-    new_rules = new_rules.replace("; ", ", ")
-    # replace `<=` to `=<`
-    new_rules = new_rules.replace("<=", "=<")
-    # replace `!=` to `\=`
-    new_rules = new_rules.replace("!=", "\\=")
-    # replace `#false :-` to `:-` (integrity constraints)
-    new_rules = new_rules.replace("#false :-", ":-")
+                    # Dual statements
+                    for dual in get_dual(t3):
+                        new_rules += str(dual) + r" % dual" + "\n"
+                    # not pred :- -pred DISABLED TO PREVENT INFINITE LOOPS
+                    # for explicit_dual in get_explicit_dual(t3):
+                    #     new_rules += str(explicit_dual) + r" % dual" + "\n"
+                    # :- a, -a
+                    for constraint in get_constraints(t3):
+                        new_rules += str(constraint) + "\n"
 
     return "% " + str(term) + "\n" + new_rules
