@@ -1,5 +1,3 @@
-scasp_path: "./scasp/scasp"
-
 database:
   user: "annottool"
   password: ""
