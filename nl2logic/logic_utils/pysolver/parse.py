@@ -42,11 +42,12 @@ def parse_program(program: str):
         # remove_location(rule)
 
         parsed_rules.append(rule)
+        is_dual = r"% dual" in rule_str
         
         hash_head = get_hash_head(rule)
         if hash_head not in parsed_rule_dict:
             parsed_rule_dict[hash_head] = []
-        parsed_rule_dict[hash_head].append(rule)
+        parsed_rule_dict[hash_head].append((rule, is_dual))
         label_rule_dict[label] = rule
     return parsed_rule_dict, label_rule_dict
 

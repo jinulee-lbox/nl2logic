@@ -25,23 +25,16 @@ def update_proved_goal_table(proved_goal_table, queue, key, value):
             raise ValueError(f"Goal {key} is marked as unprovable; however found a proof")
         return
     if proved_goal_table[key][0] is None:
+        assert isinstance(value, Stack)
+        value_id = value.proved_substacks
         # Proof is on progress
-        proved_goal_table[key].append(value)
-        goals_on_prove = set()
-        for s in queue:
-            goals_on_prove.update(s.find_goals_on_prove())
-        for stackgoal in goals_on_prove:
-            if unify(key, stackgoal) is not None:
-                return
-        # reach here -> no proofs are active on the stack
-        # Goal is completely proved (will not appear on stack)
-        proved_goal_table[key].pop(0) # remove initial None marker
-    # print(f"=> Complete proof found for {key}: {len(proved_goal_table[key])} valid proofs")
+        if value_id not in [x.proved_substacks for x in proved_goal_table[key][1:]]:
+            proved_goal_table[key].append(value)
 
 def consistency_check(rule_dict, proved_goal_table):
     if "#false" not in rule_dict:
         return True
-    false_lit = rule_dict["#false"][0].head
+    false_lit = rule_dict["#false"][0][0].head # [0](first rule)[0](rule itself) #cf. [*][1]: is_dual
     if solve(false_lit, rule_dict, initial_call=False, proved_goal_table=proved_goal_table):
         return False
     return True
@@ -73,6 +66,11 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
         else:
             _solve(curr_stack, rule_dict, queue, proved_goal_table)
     # print(f"End proof for {goal} : {len(proofs)} solutions")
+
+    # Clean proved_goal_table
+    for proof_list in proved_goal_table.values():
+        if proof_list is not None and proof_list[0] is None:
+            proof_list.pop(0)
 
     return proofs
 
@@ -185,7 +183,7 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
     # apply rules recursively
     original_stack = stack # preserve original stack to prevent mix between rules
     is_any_rule_unified = False
-    for rule in relevant_rules:
+    for rule, is_dual in relevant_rules:
         # Check if goal unifies with rule head, and get variable mapping
         head = deepcopy(rule.head)
         bindings = unify(goal, head)
@@ -193,6 +191,8 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
             continue # unification failure(rule head does not match current goal)
 
         stack = deepcopy(original_stack)
+        # Mark stack if it is proved by an implicit dual rule
+        stack.is_dual = is_dual
 
         is_any_rule_unified = True
         # Add binding information created by rules

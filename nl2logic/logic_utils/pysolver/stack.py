@@ -17,6 +17,8 @@ class Stack():
         self.proved_substacks: List[Stack]= [] # proved
         self.substack: Stack = None # proving
         self.goal_to_prove: List[AST] = [] # will prove
+        # Dual marker
+        self.is_dual = False
 
     def get_root(self):
         curr_stack = self
