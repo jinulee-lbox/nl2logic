@@ -1,6 +1,6 @@
 from typing import *
 
-from .parse import parse_program, parse_goal
+from .parse import parse_program, parse_line
 from .solve import solve
 from .justification_tree import *
 from .utils import flip_sign
@@ -18,7 +18,7 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
     # print(preprocessed_program)
 
     rule_table, _ = parse_program(preprocessed_program)
-    goal = parse_goal(conc_symbol)
+    goal = parse_line(conc_symbol).head
     # profiler = Profiler()
     # profiler.start()
     proofs = solve(goal, rule_table, proved_goal_table)
@@ -44,7 +44,7 @@ def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc
     # print(preprocessed_program)
 
     rule_table, _ = parse_program(preprocessed_program)
-    goal = parse_goal(conc_symbol)
+    goal = parse_line(conc_symbol).head
     # profiler = Profiler()
     # profiler.start()
     proofs = solve(goal, rule_table, proved_goal_table)

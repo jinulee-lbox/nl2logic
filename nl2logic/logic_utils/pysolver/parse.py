@@ -2,9 +2,7 @@ from typing import List
 import re
 
 from clingo.ast import *
-from clingo.control import *
 from clingo.symbol import *
-from clingo.solving import *
 from .utils import get_hash_head
 
 def parse_program(program: str):
@@ -33,10 +31,7 @@ def parse_program(program: str):
                 break
             anonym_idx += 1
 
-        # Parse rule string via Clingo API
-        _temp = []
-        parse_string(rule_str, callback=_temp.append)
-        rule: AST = _temp[1]
+        rule = parse_line(rule_str)
 
         # Remove location inforamtion for efficiency
         # remove_location(rule)
@@ -51,8 +46,8 @@ def parse_program(program: str):
         label_rule_dict[label] = rule
     return parsed_rule_dict, label_rule_dict
 
-def parse_goal(goal: str):
+def parse_line(goal: str):
     _temp = []
     parse_string(goal, callback=_temp.append)
-    goal: AST = _temp[1].head
+    goal: AST = _temp[1]
     return goal

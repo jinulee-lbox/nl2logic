@@ -1,7 +1,7 @@
 from .db_utils import DatabaseAPI
 from ..logic_utils import asp_extract_const_list
-from pandas import DataFrame
 import json
+import random
 
 def db_find_missing_ontology(const_list):
     db = DatabaseAPI('nl2logic')
@@ -383,3 +383,25 @@ def db_get_all_asp_tagged_case():
 
     db.close()
     return case_list
+
+def db_get_head_matching_terms(head: str) :
+    db = DatabaseAPI('nl2logic')
+    
+    data = db.query("""
+    SELECT nl_description.text AS comment,asp_term.term AS asp, nl_description.source AS source FROM
+    ((nl2logic.text_comment nl_description JOIN nl2logic.rel_text_term rt ON ((nl_description.id = rt.text_id))) JOIN nl2logic.asp_term asp_term ON ((rt.term_id = asp_term.id))) WHERE (asp_term.term LIKE %s) 
+    """, (head + r"%",))
+
+    db.close()
+    return data
+
+def db_get_random_terms(max_n: int) :
+    db = DatabaseAPI('nl2logic')
+
+    data = db.query("""
+    SELECT nl_description.text AS comment,asp_term.term AS asp, nl_description.source AS source FROM
+    ((nl2logic.text_comment nl_description JOIN nl2logic.rel_text_term rt ON ((nl_description.id = rt.text_id))) JOIN nl2logic.asp_term asp_term ON ((rt.term_id = asp_term.id))) 
+    """)
+
+    db.close()
+    return random.sample(data, max_n)

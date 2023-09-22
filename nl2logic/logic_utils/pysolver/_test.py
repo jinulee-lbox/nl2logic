@@ -1,4 +1,4 @@
-from .parse import parse_program, parse_goal
+from .parse import parse_program, parse_line
 from .solve import solve
 from .preprocess import preprocess
 from .justification_tree import JustificationTree
@@ -69,7 +69,7 @@ print(preprocessed)
 # Run proof
 rule_table, _ = parse_program(preprocessed)
 print([str(x) for x in rule_table["b"]])
-goal = parse_goal(goal)
+goal = parse_line(goal).head
 result = solve(goal, rule_table)
 print("[PROVED!!!]" if result else "[FAILED!!!]")
 print(len(result))
