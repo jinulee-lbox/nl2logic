@@ -1,5 +1,6 @@
 from copy import deepcopy
 from clingo.ast import *
+from clingo.symbol import *
 import re
 
 UNIT_FACTOR = {

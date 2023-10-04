@@ -405,3 +405,13 @@ def db_get_random_terms(max_n: int) :
 
     db.close()
     return random.sample(data, max_n)
+
+def db_get_const_information(consts):
+    db = DatabaseAPI('nl2logic')
+
+    consts = [f'"{c}"' for c in consts]
+    data = db.query(f"""
+    SELECT * FROM asp_const WHERE const IN ({','.join(consts)})
+    """)
+    db.close()
+    return data

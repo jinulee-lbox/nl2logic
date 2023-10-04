@@ -8,7 +8,7 @@ from nl2logic.logic_utils.pysolver.utils import get_hash_head, flip_sign
 
 from nl2logic.database_utils.queries import db_get_head_matching_terms, db_get_random_terms
 
-def find_head_matching_examples(goal: AST, max_n: int, more_related_goes_later=True):
+def find_head_matching_examples(goal: AST, max_n: int = None, more_related_goes_later=True):
     # Retrieve goals that share same prefix
     head = get_hash_head(goal)
     head_matching_terms = db_get_head_matching_terms(head)
@@ -32,13 +32,16 @@ def find_head_matching_examples(goal: AST, max_n: int, more_related_goes_later=T
     else:
         result = pos_unifying_terms + neg_unifying_terms + pos_non_unifying_terms + neg_non_unifying_terms
 
-    if len(result) <= max_n:
-        return result
-    else:
-        if more_related_goes_later:
-            return result[-max_n:]
+    if max_n is not None:
+        if len(result) <= max_n:
+            return result
         else:
-            return result[:max_n]
+            if more_related_goes_later:
+                return result[-max_n:]
+            else:
+                return result[:max_n]
+    else:
+        return result
 
 def find_random_examples(max_n: int):
     random_terms = db_get_random_terms(max_n)

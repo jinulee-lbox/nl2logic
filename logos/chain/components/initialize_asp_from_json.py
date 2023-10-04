@@ -28,5 +28,5 @@ def get_initial_program(doc):
 def get_goals(doc):
     results = []
     for conc in doc['conclusion']:
-        results.append(f"{conc['verdict']}(defendant, crime(\"{conc['law_id']}\")).")
+        results.append(f"{conc['verdict']}(defendant(\"A\"), crime(\"{conc['law_id']}\")).")
     return results
