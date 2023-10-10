@@ -11,11 +11,11 @@ from langchain.prompts import (
 from ..utils.chat_model import openai_chat_model
 
 VALIDATE_RATIONALE_FROM_DOC_PROMPT = \
-r"""You are a legal expert. Your goal is to read the document given, and judge if the sentence is true or can be inferred, given the document.
+r"""You are a legal expert. Your goal is to read the document given, and judge if the sentence is true or at least not contradictory to the document.
 """
 
 VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT = \
-r"""Answer with 'Yes' or 'No'. Is this sentence true or can be inferred according to the document?.
+r"""Answer with 'Yes' or 'No'. Can this sentence be "inferred" without contradiction?.
 """
 
 def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[str, str]:

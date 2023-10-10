@@ -415,3 +415,21 @@ def db_get_const_information(consts):
     """)
     db.close()
     return data
+    
+def db_get_all_consts():
+    db = DatabaseAPI('nl2logic')
+    data = db.query(f"""
+    SELECT * FROM asp_const
+    """)
+    db.close()
+    return data
+
+def db_get_entity_relation():
+    db = DatabaseAPI('nl2logic')
+
+    data = db.query(f"""
+    SELECT * FROM rel_is_a
+    """)
+
+    db.close()
+    return data

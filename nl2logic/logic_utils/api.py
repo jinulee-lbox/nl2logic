@@ -91,8 +91,9 @@ def asp_extract_const_list(term: str, exclude_underscore:bool = True):
             try:
                 name = node.symbol.name
                 arity = len(node.symbol.arguments)
-                if exclude_underscore and (not name.startswith("_") or arity >= 1):
+                if not exclude_underscore or not name.startswith("_"):
                     const_list.append((name, arity))
+                self.visit_children(node)
                 return node # No change
             except Exception:
                 # number, etc
@@ -100,7 +101,7 @@ def asp_extract_const_list(term: str, exclude_underscore:bool = True):
         def visit_Function(self, node):
             name = node.name
             arity = len(node.arguments)
-            if not name.startswith("_"):
+            if not exclude_underscore or not name.startswith("_"):
                 const_list.append((name, arity))
             self.visit_children(node)
             return node # No change
@@ -118,6 +119,37 @@ def asp_extract_const_list(term: str, exclude_underscore:bool = True):
     except Exception as e:
         return []
     return const_list
+
+def asp_extract_pred_arg_list(term: str, exclude_underscore:bool = True):
+    # Refer to official Potassco guide for details in Transformer.
+    pred_arg_list = []
+    class ConstantTracker(Transformer):
+        def visit_Function(self, node):
+            name = node.name
+            if not exclude_underscore or not name.startswith("_"):
+                for i, arg in enumerate(node.arguments):
+                    if arg.ast_type == ASTType.Function and (not exclude_underscore or not arg.name.startswith("_")):
+                        pred_arg_list.append((name, i, arg.name))
+                        
+            self.visit_children(node)
+            return node # No change
+    
+    # parse_string converts string to AST.
+    result = []
+    # try:
+    if True:
+        if term.strip().endswith('.'):
+            parse_string(term, result.append)
+        # else, add a period and parse
+        else:
+            parse_string(term + ".", result.append)
+        result = result[1]  # AST
+        unpool_list = result.unpool()
+        for u in unpool_list:
+            ConstantTracker()(u)
+    # except Exception as e:
+    #     return []
+    return pred_arg_list
 
 def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style="html"):
     # Generate tempfile

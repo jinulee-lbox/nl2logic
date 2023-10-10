@@ -54,7 +54,7 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
     proofs = [] # List of completely proven stacks
     while len(queue) > 0:
         curr_stack = queue.pop()
-        # print(len(queue), ccurr_stack.goal, curr_stack.proved) #, curr_stack.parent.goal if curr_stack.parent else None)
+        # print(len(queue), curr_stack.goal, curr_stack.proved) #, curr_stack.parent.goal if curr_stack.parent else None)
         if curr_stack.proved:
             update_proved_goal_table(proved_goal_table, queue, curr_stack.original_goal, curr_stack)
             if curr_stack.parent is None:
@@ -169,11 +169,12 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
         new_proved_stacks = solve(new_goal, rule_dict, initial_call=False, proved_goal_table=proved_goal_table)
         if len(new_proved_stacks) >= 1:
             # TODO add callback for trace failure
-            # print(goal, "failed because", new_stack.goal, "is proved")
+            # print(goal, "failed because", new_goal, "is proved")
             return
         else:
             # Cannot prove the positive dual
             stack.proved = True
+            # print(goal, "suceeded because", new_goal, "cannot be proved")
             pass
 
     
@@ -217,8 +218,8 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
             # Append to queue
             queue.append(new_stack)
     
-    # handle trivial negation
-    if is_negated(goal) and not is_any_rule_unified:
+    # handle negation: if reach here, it is true
+    if is_negated(goal):
         # not x
         # where x does not exists
         stack.proved = True

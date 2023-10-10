@@ -7,7 +7,8 @@ from .components import *
 # Top-down solver
 from nl2logic.logic_utils.pysolver import *
 from nl2logic.logic_utils.pysolver.preprocess import preprocess
-from nl2logic.logic_utils.pysolver.run_proof import NOT_EXIST, USER_PROVED
+from nl2logic.logic_utils.pysolver.run_proof import NOT_EXIST, UNPROVED_YET
+from nl2logic.logic_utils.pysolver.utils import get_hash_head
 from nl2logic.config import nl2logic_config as config
 
 def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5):
@@ -28,6 +29,12 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5):
 
     # Retrieve information from config
 
+    # Named entity recognition
+    # frame = get_frame_instance("operateVehicle", body_text)
+    # exit()
+    # entities = get_named_entity_recognition(body_text)
+    # print(entities)
+
     # Initialization
     result_trees = []
     for goal in goals:
@@ -37,23 +44,37 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5):
         visited = set(stack)
 
         while len(stack) > 0:
+            print("STACK:")
+            print([str(x[0]) for x in stack])
             curr_goal, unproved_reason = stack.pop()
             curr_goal_str = re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", str(curr_goal)) # Remove variables
             # if unproved_reason == USER_PROVED:
             #     continue
             logging.info("=======================")
             logging.info(f"Proving: {curr_goal}")
+            # To generate proof for `not x` clauses,
+            # Related keyword must be included to prevent hallucination
+            if unproved_reason == NOT_EXIST:
+                head = get_hash_head(curr_goal)
+                head = head.replace("-", "").replace("not ", "")
+                const_info = db_get_const_information([head])[0]
+                usage = const_info["usage"].split(",")
+                is_usage_in_text = False
+                for keyword in usage:
+                    if keyword in body_text:
+                        is_usage_in_text = True; break
+                if not is_usage_in_text:
+                    continue
 
             # Retrieve examples from DB
-            commonsense_asps = []
-            rule_examples = []; commonsense_check = set()
+            rule_examples = []
             raw_rule_examples = find_head_matching_examples(curr_goal)
             for rule_example in raw_rule_examples:
-                if rule_example["source"] in ["commonsense"] and rule_example["asp"] not in commonsense_check:
-                    # Commonsesne statements can apply to all documents
-                    commonsense_asps.append(rule_example)
-                    commonsense_check.add(rule_example["asp"])
-                else:
+                # if rule_example["source"] in ["commonsense"] and rule_example["asp"] not in commonsense_check:
+                #     # Commonsesne statements can apply to all documents
+                #     commonsense_asps.append(rule_example)
+                #     commonsense_check.add(rule_example["asp"])
+                # else:
                     rule_examples.append(rule_example)
             if len(rule_examples) < few_shot_n:
                 # Add random examples to match few_shot_n
@@ -73,16 +94,15 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5):
                 retry_count -= 1
 
                 # Generate possible ASPs
-                if len(rule_examples) > 0:
-                    result = get_asp_and_rationale_from_doc(curr_goal_str, body_text, rule_examples)
-                else:
-                    result = get_asp_and_rationale_from_doc(curr_goal_str, body_text)
+                result = get_asp_and_rationale_from_doc(curr_goal_str, body_text, rule_examples)
                 if result is None:
+                    logging.info("LLM failed to generate valid JSON")
                     continue
 
                 # Syntax / Ontology checking
-                valid_new_asps = validate_asp_list(commonsense_asps + result, curr_goal)
+                valid_new_asps = validate_asp_list(result, curr_goal)
                 if len(valid_new_asps) == 0:
+                    logging.info("LLM failed to generate valid ASP code(syntax error, ontology, ...)")
                     continue
 
                 # Generate
@@ -90,17 +110,20 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5):
                 if len(valid_new_asps) > 0:
                     for asp in valid_new_asps:
                         # Covnert ASP to string
+                        asp["comment_raw"] = asp["comment"]
                         asp["comment"] = get_rationale_from_asp(parse_line(asp["asp"]), asp["comment"], rule_examples)
                         logging.info(json.dumps(asp, indent=4, ensure_ascii=False))
                         if asp["source"] in ["commonsense"] or validate_rationale_from_doc(asp["comment"], body_text):
                             logging.info("=> Proved.")
                             # Validation complete
                             program.append(asp)
-                            raw_program += asp["asp"] + "\n"
+                            raw_program.append(asp["asp"])
                             preprocessed_program += preprocess(asp["asp"])
-                            new_stack = [x for x in get_unproved_goals_from_preprocessed_program(preprocessed_program, goal, dict()) if x not in visited]
+                            # Update stack by adding new goals / remove unproved goals
+                            new_stack = get_unproved_goals_from_preprocessed_program(preprocessed_program, goal, dict())
+                            new_stack = [x for x in new_stack if x not in visited] # deduplicate
                             visited.update(new_stack)
-                            stack += new_stack
+                            stack = new_stack
                             proved = True # end the loop
                         else:
                             logging.info("=> Unproved.")
@@ -120,5 +143,6 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5):
         if proved:
             result_trees.append(proof)
         else:
-            result_trees.append(get_proof_tree_from_preprocessed_program(preprocessed_program, 'not ' + goal, dict())[0])
-    return result_trees
+            antiproof, _ = get_proof_tree_from_preprocessed_program(preprocessed_program, 'not ' + goal, dict())
+            result_trees.append(antiproof)
+    return result_trees, raw_program
