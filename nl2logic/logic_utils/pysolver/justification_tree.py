@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from copy import deepcopy
 import re
 from collections import defaultdict
@@ -75,7 +75,7 @@ class JustificationTreeNode():
         return "`" + self.repr + "`"
 
 class JustificationTree():
-    def __init__(self, proofs: List[Stack]):
+    def __init__(self, proofs: List[Stack], proved_goal_table: Dict[AST, List[Stack]]):
         if proofs is None:
             # Empty tree list
             return
@@ -95,12 +95,22 @@ class JustificationTree():
                 # Add a unique child node
                 node = JustificationTreeNode(str(key))
                 parent_node.add_child(node)
-                
+
                 # Collect subgoals
                 unique_subgoals = defaultdict(list)
                 for stack in value:
-                    for subgoal in stack.proved_substacks:
-                        unique_subgoals[subgoal.goal].append(subgoal)
+                    # Expand proof stacks if they are from_cache
+                    if stack.from_cache:
+                        print(stack.goal, stack.original_goal, len(proved_goal_table[stack.original_goal]))
+                        # They do not have valid proved_substacks;
+                        # Retrieve from cache
+                        if proved_goal_table is not None:
+                            for instance in proved_goal_table[stack.original_goal]:
+                                for subgoal in instance.proved_substacks:
+                                    unique_subgoals[subgoal.goal].append(subgoal)
+                    else:
+                        for subgoal in stack.proved_substacks:
+                            unique_subgoals[subgoal.goal].append(subgoal)
                 
                 for subkey, subvalue in unique_subgoals.items():
                     bfs.append((subvalue, node))

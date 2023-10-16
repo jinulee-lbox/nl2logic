@@ -20,7 +20,7 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
 
     # Parse and merge trees
     if len(proofs) > 0:
-        tree = JustificationTree(proofs)
+        tree = JustificationTree(proofs, proved_goal_table)
         proved=True
     else:
         proved_goal_table[goal] = None # memoization for unproved root goal

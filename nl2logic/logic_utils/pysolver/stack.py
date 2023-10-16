@@ -19,6 +19,8 @@ class Stack():
         self.goal_to_prove: List[AST] = [] # will prove
         # Dual marker
         self.is_dual = False
+        # Cache marker (if True, proved_substacks list is incomplete)
+        self.from_cache = False
 
     def get_root(self):
         curr_stack = self
