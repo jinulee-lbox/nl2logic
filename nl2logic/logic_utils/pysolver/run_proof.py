@@ -20,10 +20,8 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
 
     # Parse and merge trees
     if len(proofs) > 0:
-        just_trees = [JustificationTree(stack) for stack in proofs]
-        merged_justtree = merge_just_trees(just_trees)
+        tree = JustificationTree(proofs)
         proved=True
-        tree = merged_justtree
     else:
         proved_goal_table[goal] = None # memoization for unproved root goal
         proved=False

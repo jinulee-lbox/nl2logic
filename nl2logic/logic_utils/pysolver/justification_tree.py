@@ -75,24 +75,38 @@ class JustificationTreeNode():
         return "`" + self.repr + "`"
 
 class JustificationTree():
-    def __init__(self, stack: Stack):
-        if stack is None:
-            # Empty tree
+    def __init__(self, proofs: List[Stack]):
+        if proofs is None:
+            # Empty tree list
             return
-        stack = stack.get_root()
-        self.root = JustificationTreeNode(str(stack.goal))
-        dfs = [(stack, self.root)]
-        # preorder DFS on stack to traverse all nodes
-        while len(dfs) > 0:
-            curr, node = dfs.pop()
-            # Visit children
-            temp_dfs = []
-            for substack in curr.proved_substacks:
-                new_node = JustificationTreeNode(str(substack.goal))
-                node.add_child(new_node)
-                temp_dfs.append((substack, new_node))
-            node.group_finish()
-            dfs.extend(reversed(temp_dfs)) # reversed() to ensure first child appears first on the stack
+
+        self.root = JustificationTreeNode("")
+        init_proofs = [stack.get_root() for stack in proofs]
+        bfs = [(init_proofs, self.root)]
+        # bfs on stack to traverse all nodes
+        while len(bfs) > 0:
+            proofs, parent_node = bfs.pop(0)
+            # Group proofs by original_goal (i.e. rules that directly generate the fact)
+            unique_goals = defaultdict(list)
+            for stack in proofs:
+                unique_goals[stack.goal].append(stack)
+
+            for key, value in unique_goals.items():
+                # Add a unique child node
+                node = JustificationTreeNode(str(key))
+                parent_node.add_child(node)
+                
+                # Collect subgoals
+                unique_subgoals = defaultdict(list)
+                for stack in value:
+                    for subgoal in stack.proved_substacks:
+                        unique_subgoals[subgoal.goal].append(subgoal)
+                
+                for subkey, subvalue in unique_subgoals.items():
+                    bfs.append((subvalue, node))
+        
+        if len(self.root.children) == 1:
+            self.root = self.root.children[0]
     
     def __str__(self):
         result_str = self.root._pprint([False], -1)
@@ -115,49 +129,3 @@ class JustificationTree():
                 # raise KeyError("Cannot find key " + node_rep + " in " + str(node_seq))
                 return None
         return node
-
-############################################################
-
-def merge_just_tree_nodes(node_list: List[JustificationTreeNode], dest: JustificationTreeNode):
-    # Merge tree2 into tree1.
-    def get_child_repr_list(node):
-        return [x.repr for x in node.children]
-    child_repr_lists = map(get_child_repr_list, node_list)
-
-    # Find all common representations..
-    common_child_reprs = set.intersection(*[set(x) for x in child_repr_lists])
-    # and add to dummy node
-    first_node = node_list[0]
-    for child in first_node.children:
-        if child.repr in common_child_reprs:
-            # Add to dummy node
-            dest.add_child(JustificationTreeNode(child.repr), nongroup=True)
-
-    # Add nodes that are not globally shared among merged trees
-    for node in node_list:
-        added = False
-        for child in node.children:
-            if child.repr not in common_child_reprs:
-                dest.add_child(JustificationTreeNode(child.repr))
-                common_child_reprs.add(child.repr)
-                added = True
-        if added:
-            dest.group_finish()
-
-    # Recursive call
-    for newchild in dest.children:
-        recursive_list = []
-        for node in node_list:
-            for child in node.children:
-                if child.repr == newchild.repr:
-                    recursive_list.append(child)
-                    break
-        merge_just_tree_nodes(recursive_list, newchild)
-
-
-def merge_just_trees(answer_trees):
-    curr_nodes = [tree.root for tree in answer_trees]
-    dummy_tree = JustificationTree(stack=None)
-    dummy_tree.root = JustificationTreeNode(curr_nodes[0].repr)
-    merge_just_tree_nodes(curr_nodes, dummy_tree.root)
-    return dummy_tree
