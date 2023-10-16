@@ -26,11 +26,24 @@ UNIT_FACTOR = {
     "원": 1,
     "도": 1000,
 }
+# Markers for failed goals TODO use Enum
+NOT_EXIST = 0
+UNPROVED_YET = 1
+def failure_code_to_str(failure):
+    if failure == NOT_EXIST:
+        return "NOT_EXIST"
+    if failure == UNPROVED_YET:
+        return "UNPROVED_YET"
+    else:
+        raise ValueError("Wrong failed-goal-marker")
+
 def convert_numeric_string_to_int(input_string):
     pattern = r'^([-+]?\d{1,3}(?:,\d{3})*(\.\d+)?)|^([-+]?\d+(\.\d*)?)'
     match = re.match(pattern, input_string)
     
     if match:
+        if input_string.isnumeric():
+            return int(input_string)
         num_str = match.group()
         unit = input_string.replace(num_str, "")
         num = float(num_str.replace(",",""))
@@ -100,3 +113,6 @@ def flip_sign(ast):
     else:
         raise ValueError("Does not support DoubleNegation")
     return new_ast
+
+def anonymize_vars(goal_str):
+    return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", goal_str) # Remove variables

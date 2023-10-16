@@ -7,6 +7,7 @@ from clingo.ast import *
 from clingo.control import *
 from clingo.symbol import *
 from .stack import Stack
+from .utils import anonymize_vars
 
 class JustificationTreeNode():
     def __init__(self, repr: str):
@@ -95,7 +96,7 @@ class JustificationTree():
     
     def __str__(self):
         result_str = self.root._pprint([False], -1)
-        return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", result_str)
+        return anonymize_vars(result_str)
 
     def transform(self, function):
         self.root._transform(function)

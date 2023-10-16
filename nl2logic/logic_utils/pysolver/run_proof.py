@@ -3,12 +3,8 @@ from typing import *
 from .parse import parse_program, parse_line
 from .solve import solve
 from .justification_tree import *
-from .utils import flip_sign, is_negated
+from .utils import flip_sign, is_negated, NOT_EXIST, UNPROVED_YET
 import logging
-
-# Markers for failed goals
-NOT_EXIST = 0
-UNPROVED_YET = 1
 
 def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_symbol: str, proved_goal_table: dict) -> Tuple[JustificationTree, bool]:
     logging.debug(f"?- {conc_symbol}.")
@@ -32,7 +28,7 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
         proved_goal_table[goal] = None # memoization for unproved root goal
         proved=False
         tree = None
-        print([str(x[0]) for x in get_unproved_goals_from_preprocessed_program(preprocessed_program, conc_symbol, dict())])
+        # print([str(x) for x in get_unproved_goals_from_preprocessed_program(preprocessed_program, conc_symbol, dict())])
     return tree, proved
 
 
@@ -44,36 +40,26 @@ def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc
     rule_table, _ = parse_program(preprocessed_program)
     goal = parse_line(conc_symbol).head
 
-    proofs = solve(goal, rule_table, proved_goal_table)
-    # Find `not ...` goals that are not yet proved
-    for stack in proofs:
-        # Recurse down until hit floor / non-negated stack
-        provestack = [stack.get_root()]
-        while len(provestack) > 0:
-            curr = provestack.pop()
-            if len(curr.proved_substacks) > 0:
-                # Exhaustive search for all substacks
-                provestack.extend(curr.proved_substacks)
-            elif is_negated(curr.goal):
-                # If encounter a dual rule
-                result.add((flip_sign(curr.goal), NOT_EXIST))
+    proofs, unproved_goals = solve(goal, rule_table, proved_goal_table, get_unproved_goals=True, initial_call=False)
+    if len(proofs) > 0:
+        # Given goal is proved
+        # -> change status to not exist
+        # unproved_goals = [(x[0], NOT_EXIST) for x in unproved_goals]
+        pass
+    return unproved_goals
 
-    # Negated goals for dual rules
-    proved_goal_table[goal] = None # memoization for unproved root goal
-    # Prove negated goal to find the reason
-    proofs = solve(flip_sign(goal), rule_table, proved_goal_table)
-    for stack in proofs:
-        # Recurse down until hit floor / non-negated stack
-        provestack = [stack.get_root()]
-        while len(provestack) > 0:
-            curr = provestack.pop()
-            if len(curr.proved_substacks) > 0:
-                # Last body literal of dual rule is a flipped version of original rule,
-                # this is the cause for original proof failing
-                provestack.extend(curr.proved_substacks)
-                # Remove trivial proofs for `not x` (auto True because its dual cannot be proved)
-                result.discard((flip_sign(curr.goal), UNPROVED_YET))
-            elif is_negated(curr.goal):
-                result.add((flip_sign(curr.goal), UNPROVED_YET))
+if __name__ == "__main__":
 
-    return list(result)
+    program = """fin(X) :- not a(X).
+not fin(X) :- a(X).
+a(X) :- z(X), not b(X, _).
+not a(X) :- not z(X).
+not a(X) :- z(X), b(X, _).
+b(X, 1) :- c(X).
+not b(X, 1) :- not c(X).
+b(X, 2) :- d(X).
+not b(X, 2) :- not d(X).
+z(k).
+"""
+    result = get_unproved_goals_from_preprocessed_program(program, "fin(k).", dict())
+    print([str(x[0]) for x in result])

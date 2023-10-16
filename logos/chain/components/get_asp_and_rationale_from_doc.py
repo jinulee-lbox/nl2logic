@@ -9,6 +9,7 @@ from langchain.prompts import (
 )
 
 from ..utils.chat_model import openai_chat_model
+from nl2logic.logic_utils.pysolver.utils import get_hash_head
 
 ASP_RATIONALE_EXAMPLE_PROMPT = \
 r"""{{
@@ -31,8 +32,9 @@ Examples:
 """
 
 FIND_RATIONALE_FROM_DOC_PROMPT = \
-r"""You are going to generate a fact in 한국어 that proves `{curr_goal}`.
-Then generate the ASP code. All ASP code should start with `{curr_goal}`. Use examples. {{'comment': ..., 'asp': ...}}
+r"""You are going to generate a single-sentence fact in 한국어 that unifies with `{curr_goal}`. Capital letters(variables) and _Anon_* unifies with any values.
+Then generate the ASP code. All ASP code should include `{curr_goal_head}`.
+Use examples. {{'comment': ..., 'asp': ...}}
 Return type: Python Dicts.
 """
 
@@ -53,8 +55,8 @@ def get_asp_and_rationale_from_doc(curr_goal: str, body_text: str, examples: Lis
 
     # Run LLMChain
     convert_to_asp_chain = LLMChain(llm=openai_chat_model(), prompt=get_asp_and_rationale_prompt)
-    result = str(convert_to_asp_chain.run({"curr_goal": curr_goal, "body_text": body_text}))
-    print(result)
+    curr_goal_head = get_hash_head(curr_goal)
+    result = str(convert_to_asp_chain.run({"curr_goal": curr_goal, "curr_goal_head": curr_goal_head, "body_text": body_text}))
     try:
         # Heuristic: if not a python list, add square braces
         if not result.startswith("[") and not result.endswith("]"):
