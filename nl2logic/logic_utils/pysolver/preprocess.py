@@ -303,6 +303,7 @@ def get_explicit_dual(rule:AST) -> List[AST] :
                     head,
                     [original_head]
                 )]
+    return []
 
 def get_constraints(rule:AST) -> [AST] :
     assert rule.ast_type == ASTType.Rule
@@ -421,8 +422,8 @@ def preprocess(term_str):
                     for dual in get_dual(t3):
                         new_rules += str(dual) + r" % dual" + "\n"
                     # not pred :- -pred DISABLED TO PREVENT INFINITE LOOPS
-                    # for explicit_dual in get_explicit_dual(t3):
-                    #     new_rules += str(explicit_dual) + r" % dual" + "\n"
+                    for explicit_dual in get_explicit_dual(t3):
+                        new_rules += str(explicit_dual) + r" % dual" + "\n"
                     # :- a, -a
                     for constraint in get_constraints(t3):
                         new_rules += str(constraint) + "\n"

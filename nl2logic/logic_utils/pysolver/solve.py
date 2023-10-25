@@ -127,7 +127,8 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
     # TODO Check grounded inequality / bool constants
     if goal.atom.ast_type == ASTType.Comparison:
         if not is_ground(goal):
-            raise ValueError("Comparison goal not grounded")
+            # raise ValueError("Comparison goal not grounded")
+            return
         # Comparison
         lterm = goal.atom.term
         assert len(goal.atom.guards) == 1

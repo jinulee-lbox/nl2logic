@@ -91,7 +91,7 @@ def validity_check(data, mode):
     missing_ontology_total = []
     for pgm, success in zip(program, prgm_success):
         try:
-            const_list = asp_extract_const_list(pgm, exclude_underscore=(mode == "case"))
+            const_list = asp_extract_const_list(pgm, exclude_underscore=True)
             missing_ontology = db_find_missing_ontology(const_list)
             if len(missing_ontology) > 0 and success['code'] == 0:
                 success['code'] = 11 # missing ontology
