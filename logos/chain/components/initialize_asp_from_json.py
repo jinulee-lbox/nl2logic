@@ -48,8 +48,7 @@ def get_skip_words(law_id, body_text):
 
 def get_initial_program(doc):
     law_ids = []
-    for conc in doc['conclusion']:
-        law_ids.append(conc['law_id'])
+    law_ids.append(doc['law_id'])
     # Add default keys
     if "형사일반" not in law_ids:
         law_ids.append("형사일반")
@@ -79,6 +78,5 @@ def get_initial_program(doc):
 
 def get_goals(doc):
     results = []
-    for conc in doc['conclusion']:
-        results.append(f"{conc['verdict']}(defendant(\"A\"), crime(\"{conc['law_id']}\")).")
+    results.append(f"{doc['verdict']}(defendant(\"A\"), crime(\"{doc['law_id']}\")).")
     return results
