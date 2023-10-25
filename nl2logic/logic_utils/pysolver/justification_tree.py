@@ -101,11 +101,10 @@ class JustificationTree():
                 for stack in value:
                     # Expand proof stacks if they are from_cache
                     if stack.from_cache:
-                        print(stack.goal, stack.original_goal, len(proved_goal_table[stack.original_goal]))
                         # They do not have valid proved_substacks;
                         # Retrieve from cache
                         if proved_goal_table is not None:
-                            for instance in proved_goal_table[stack.original_goal]:
+                            for instance in proved_goal_table[stack.goal]:
                                 for subgoal in instance.proved_substacks:
                                     unique_subgoals[subgoal.goal].append(subgoal)
                     else:

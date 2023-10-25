@@ -56,7 +56,7 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
         curr_stack = queue.pop()
         # print(len(queue), curr_stack.goal, curr_stack.original_goal, curr_stack.proved) #, curr_stack.parent.goal if curr_stack.parent else None)
         if curr_stack.proved:
-            update_proved_goal_table(proved_goal_table, queue, curr_stack.original_goal, curr_stack)
+            update_proved_goal_table(proved_goal_table, queue, curr_stack.goal, curr_stack)
             if curr_stack.parent is None:
                 # Root literal has been proven
                 proofs.append(curr_stack)
