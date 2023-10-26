@@ -32,9 +32,9 @@ Examples:
 """
 
 FIND_RATIONALE_FROM_DOC_PROMPT = \
-r"""You are going to generate a single-sentence fact in 한국어 that unifies with `{curr_goal}`. Capital letters(variables) and _Anon_* unifies with any values.
-Then generate the ASP code. All ASP code should include `{curr_goal_head}`.
-Use examples. {{'comment': ..., 'asp': ...}}
+r"""You are going to generate a single-sentence fact in 한국어 that unifies with `{curr_goal}` with key `comment`. Capital letters(variables) and _Anon_* unifies with any values.
+Then generate the ASP code with key `asp`. All ASP code should include `{curr_goal_head}`.
+Format: {{'comment': ..., 'asp': ...}}
 Return type: Python Dicts.
 """
 
@@ -62,7 +62,7 @@ def get_asp_and_rationale_from_doc(curr_goal: str, body_text: str, examples: Lis
         if not result.startswith("[") and not result.endswith("]"):
             result = f"[{result}]"
         result = eval(result)
-        # print(json.dumps(result, ensure_ascii=False, indent=4))
+        print(json.dumps(result, ensure_ascii=False, indent=4))
         for r in result:
             r["source"] = "precedent" # add source information
         return result
