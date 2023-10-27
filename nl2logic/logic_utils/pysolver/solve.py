@@ -39,7 +39,7 @@ def consistency_check(rule_dict, proved_goal_table):
         return False
     return True
 
-def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, initial_call=True, get_unproved_goals=False, unproved_goals=list()) -> List[Stack]:
+def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, initial_call=True, get_unproved_goals=False, unproved_goals:List=None) -> List[Stack]:
     # print(f"Start proof for {goal}")
     if proved_goal_table is None:
         proved_goal_table = dict()

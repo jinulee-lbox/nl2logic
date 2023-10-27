@@ -3,7 +3,7 @@ from copy import deepcopy, copy
 from clingo.ast import *
 import pickle
 
-from .utils import is_negated
+from .utils import is_negated, flip_sign
 from .unify import unify, substitute
 
 class Stack():
@@ -31,24 +31,28 @@ class Stack():
     # TODO prevent infinite loops while proving
     def detect_loop(self) -> str:
         goal = self.goal
-        negation_count = 0
         loop_found = False
+        positive_loop = False
         
         # Find loop in parents
         # Constraint Answer Set Programming Without Grounding - Appendix B
         curr_stack = self.parent
         while curr_stack is not None:
             # Found a loop
-            if unify(goal, curr_stack.goal):
+            if goal == curr_stack.goal:
                 # FIXME strictly, return of unify() (bindings) should only contain var-var mapping
                 loop_found = True
+                positive_loop = True
                 break
-            if is_negated(curr_stack.goal):
-                negation_count += 1
+            elif goal == flip_sign(curr_stack.goal):
+                # FIXME strictly, return of unify() (bindings) should only contain var-var mapping
+                loop_found = True
+                positive_loop = False
+                break
             curr_stack = curr_stack.parent
         # Return result
         if loop_found:
-            if negation_count % 2 == 0 and negation_count > 2:
+            if positive_loop:
                 return "success"
             else:
                 return "failure"
