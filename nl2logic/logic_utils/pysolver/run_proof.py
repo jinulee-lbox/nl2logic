@@ -38,7 +38,7 @@ def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc
     rule_table, _ = parse_program(preprocessed_program)
     goal = parse_line(conc_symbol).head
 
-    proofs, unproved_goals = solve(goal, rule_table, proved_goal_table, get_unproved_goals=True, initial_call=False)
+    proofs, unproved_goals = solve(goal, rule_table, proved_goal_table, get_unproved_goals=True, initial_call=False, unproved_goals=list())
     if len(proofs) > 0:
         # Given goal is proved
         # -> change status to not exist
