@@ -12,10 +12,7 @@ from ..utils.chat_model import openai_chat_model
 from nl2logic.logic_utils.pysolver.utils import get_hash_head
 
 ASP_RATIONALE_EXAMPLE_PROMPT = \
-r"""{{
-    'comment': '{comment}',
-    'asp': '{asp}'
-}},
+r"""{{'comment': '{comment}', 'asp': '{asp}'}},
 """
 
 CONVERT_TO_ASP_PROMPT = \
@@ -34,7 +31,7 @@ Examples:
 FIND_RATIONALE_FROM_DOC_PROMPT = \
 r"""You are going to generate a single-sentence fact in 한국어 that unifies with `{curr_goal}` with key `comment`. Capital letters(variables) and _Anon_* unifies with any values.
 Then generate the ASP code with key `asp`. All ASP code should include `{curr_goal_head}`.
-Format: {{'comment': ..., 'asp': ...}}
+Format: {{'comment': '...', 'asp': '...'}}
 Return type: Python Dicts.
 """
 

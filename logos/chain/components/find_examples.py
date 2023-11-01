@@ -13,10 +13,10 @@ def find_head_matching_examples(goal: AST, max_n: int = None, more_related_goes_
     head = get_hash_head(goal)
     head_matching_terms = db_get_head_matching_terms(head)
     # Deduplicate terms to increase diversity
-    dedup = set()
-    head_matching_terms = [x for x in head_matching_terms if x["asp"] not in dedup and dedup.add(x["asp"]) is None]
+    # dedup = set()
+    # head_matching_terms = [x for x in head_matching_terms if x["asp"] not in dedup and dedup.add(x["asp"]) is None]
     parsed_head_matching_terms = [parse_line(x["asp"]).head for x in head_matching_terms] # parse string to ASP
-    pos_unifying_terms = [x for x, parsed in zip(head_matching_terms, parsed_head_matching_terms) if unify(goal, parsed) is not None]
+    pos_unifying_terms = [x for x, parsed in zip(head_matching_terms, parsed_head_matching_terms) if unify(goal, parsed.unpool()[0]) is not None]
     pos_non_unifying_terms = [x for x in head_matching_terms if x not in pos_unifying_terms]
     shuffle(pos_unifying_terms)
     shuffle(pos_non_unifying_terms)
@@ -24,10 +24,10 @@ def find_head_matching_examples(goal: AST, max_n: int = None, more_related_goes_
     # Retrieve goals that have negated prefix (a -> not a)
     head = get_hash_head(flip_sign(goal))
     head_matching_terms = db_get_head_matching_terms(head)
-    dedup = set()
-    head_matching_terms = [x for x in head_matching_terms if x["asp"] not in dedup and dedup.add(x["asp"]) is None]
+    # dedup = set()
+    # head_matching_terms = [x for x in head_matching_terms if x["asp"] not in dedup and dedup.add(x["asp"]) is None]
     parsed_head_matching_terms = [parse_line(x["asp"]).head for x in head_matching_terms] # parse string to ASP
-    neg_unifying_terms = [x for x, parsed in zip(head_matching_terms, parsed_head_matching_terms) if unify(goal, parsed) is not None]
+    neg_unifying_terms = [x for x, parsed in zip(head_matching_terms, parsed_head_matching_terms) if unify(goal, parsed.unpool()[0]) is not None]
     neg_non_unifying_terms = [x for x in head_matching_terms if x not in neg_unifying_terms]
     shuffle(neg_unifying_terms)
     shuffle(neg_non_unifying_terms)
