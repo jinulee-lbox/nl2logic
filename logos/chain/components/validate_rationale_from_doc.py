@@ -15,7 +15,7 @@ r"""You are a legal expert. Your goal is to read the document given, and judge i
 """
 
 VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT = \
-r"""Answer with 'Yes' or 'No'. Can this sentence be "inferred" without contradiction?.
+r"""Answer with 'Yes.' or 'No.'. Can this sentence be "inferred" without contradiction?.
 """
 
 def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[str, str]:
@@ -31,7 +31,7 @@ def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[str, 
     # Run LLMChain
     chain = LLMChain(llm=openai_chat_model(), prompt=get_asp_and_rationale_prompt)
     result = str(chain.run({"goal": natural_language_goal, "body_text": body_text}))
-    if "yes" in result.lower():
-        return True
-    else:
+    if "no." in result.lower():
         return False
+    else:
+        return True

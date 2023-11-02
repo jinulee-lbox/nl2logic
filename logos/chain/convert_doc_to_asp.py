@@ -69,11 +69,12 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
             logging.info([str(x[0]) + " / " + failure_code_to_str(x[1]) for x in stack])
             curr_goal, unproved_reason = stack.pop()
             curr_goal_str = get_key(curr_goal) # Remove variables
+            # curr_goal = parse_line(curr_goal_str + ".").head
             visited.add(curr_goal_str) # Memoization
             # if unproved_reason == USER_PROVED:
             #     continue
             logging.info("=======================")
-            logging.info(f"Proving: {curr_goal}")
+            logging.info(f"Proving: {curr_goal_str}")
 
             # Retrieve examples from DB
             rule_examples = []
@@ -87,7 +88,8 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
                     rule_examples.append(rule_example)
             if len(rule_examples) < few_shot_n:
                 # Add random examples to match few_shot_n
-                rule_examples = find_random_examples(max_n=few_shot_n-len(rule_examples)) + rule_examples
+                # rule_examples = find_random_examples(max_n=few_shot_n-len(rule_examples)) + rule_examples
+                pass
             else:
                 # Select valid examples (at the back of the list, by find_head_matching_example param `more_related_goes_later`)
                 rule_examples = rule_examples[-few_shot_n:]
@@ -103,7 +105,7 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
                 curr_retry_count -= 1
 
                 # Generate possible ASPs
-                result = get_asp_and_rationale_from_doc(curr_goal_str, body_text, rule_examples)
+                result = get_asp_and_rationale_from_doc(curr_goal, curr_goal_str, body_text, rule_examples)
                 if result is None:
                     logging.info("LLM failed to generate valid JSON")
                     continue
@@ -120,7 +122,7 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
                     for asp in valid_new_asps:
                         # Covnert ASP to string
                         asp["comment_raw"] = asp["comment"]
-                        asp["comment"] = get_rationale_from_asp(parse_line(asp["asp"]), asp["comment"], rule_examples)
+                        asp["comment"] = get_rationale_from_asp(parse_line(asp["asp"]))
                         logging.info(json.dumps(asp, indent=4, ensure_ascii=False))
                         if asp["source"] in ["commonsense"] or validate_rationale_from_doc(asp["comment"], body_text):
                             logging.info("=> Proved.")

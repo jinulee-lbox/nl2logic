@@ -5,85 +5,37 @@ from clingo.ast import AST
 from langchain import LLMChain
 from langchain.prompts import (
     ChatPromptTemplate,
-    FewShotChatMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
 
-from nl2logic.database_utils.queries import db_get_const_information
-from nl2logic.logic_utils.api import asp_extract_const_list
-from nl2logic.logic_utils.pysolver.utils import anonymize_vars
+from ..utils.logic_to_text import recursive_rule_to_text_conversion
 
 from ..utils.chat_model import openai_chat_model
 
 GET_RATIONALE_FROM_ASP_PROMPT = \
-r"""당신은 주어진 수식을 규칙에 따라 자연스러운 한국어로 풀이해주는 AI이다.
-대문자는 변수 기호인데, 같은 변수는 서로 같은 대상을 지칭한다. 
-`a.` = "a이다. / a가 성립한다."
-`:-`가 들어있으면 뒤에 나오는 것들이 "그리고"로 연결된 원인, 앞에 나오는 게 결론이다.
-  `a :- b, c, d` = "b이고, c이고, d를 만족하면 a이다."
-`_`는 아무 뜻도 없으니 답에 절대 들어가서는 안됨.
-부정을 나타내는 기호는 `-`와 `not`이 있다.
-  `-a` = "a가 아니다."
-  `not a` = "a가 증명되지 않는다."
-같은 알파벳은 같은 대상을 의미한다. (coreferencing)
+r"""당신은 판사이다. 다음 문장을 하나의 문장으로 다듬고, 조사나 어순, 호응이 어색한 부분을 수정하고, 중복된 단어들을 제거해서 읽기 편하게 만들어야 한다.
+x나 _가 들어간 구는 건너뛰어라.
 """
-GET_RATIONALE_FROM_ASP_DIRECTION_PROMPT = \
-r"""출력: 주어진 수식을 한국어로 표현한 문장.
+MERGE_WITH_RETRIEVED_SENT_PROMPT = \
+r"""판결문에서 발췌된 주어진 문장을 참고하여, 수정된 문장을 더 읽기 편하게 다듬을 것.
 """
 
-def get_rationale_from_asp(goal: AST, original_nl_description, examples) -> str:
-    consts = list(set(asp_extract_const_list(goal)))
-    if len(consts) > 0:
-        const_info = db_get_const_information(consts)
-        sorted(const_info, key = lambda x: consts.index(x["const"]))
-    else:
-        const_info = []
-
-    ontology_description = []
-    for const in const_info:
-        description = const['const']
-        if const['nargs'] > 0:
-            # parenthesis if nargs>0
-            description += "("
-            description += ",".join([f"%{i+1}" for i in range(const['nargs'])])
-            description += ")"
-        description += ": " + const["description"]
-        ontology_description.append({
-            "description": f"{description}"
-        })
-
-    # Set example few-shot prompt
-    ontology_prompt = ChatPromptTemplate.from_messages(
-        [('human', '{description}')]
-    )
-    ontology_description_prompt = FewShotChatMessagePromptTemplate(
-        examples=ontology_description,
-        example_prompt=ontology_prompt
-    )
-
-    example_prompt = ChatPromptTemplate.from_messages(
-        [("human", "{asp}"),
-         ("ai", "{comment}")]
-    )
-    few_shot_prompt = FewShotChatMessagePromptTemplate(
-        examples=examples,
-        example_prompt=example_prompt
-    )
-
+def get_rationale_from_asp(goal: AST) -> str:    
     get_asp_and_rationale_prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(GET_RATIONALE_FROM_ASP_PROMPT),
-        ("human", "주어진 문장: {comment}"),
-        ontology_description_prompt,
-        SystemMessagePromptTemplate.from_template(GET_RATIONALE_FROM_ASP_DIRECTION_PROMPT),
-        few_shot_prompt,
-        ("human", "수식: {goal}")
+        ("human", "{goal_str}")
     ])
+    goal_str = recursive_rule_to_text_conversion(goal)
 
     # Run LLMChain
     chain = LLMChain(llm=openai_chat_model(), prompt=get_asp_and_rationale_prompt)
-    goal = anonymize_vars(str(goal)) # Remove variables
-    result = str(chain.run({"goal": goal, "comment": original_nl_description}))
-    try:
-        return result
-    except:
-        return None # Syntax error, perhaps
+    result_str = str(chain.run({"goal_str": goal_str}))
+
+    # merge_with_retrieved_sent_prompt = ChatPromptTemplate.from_messages([
+    #     ("human", "{comment}\n" + MERGE_WITH_RETRIEVED_SENT_PROMPT),
+    #     ("human", "{result_str}"),
+    # ])
+    # chain = LLMChain(llm=openai_chat_model(), prompt=merge_with_retrieved_sent_prompt)
+    # result = str(chain.run({"goal_str": goal_str, "result_str": result_str, "comment": comment}))
+    
+    return result_str
