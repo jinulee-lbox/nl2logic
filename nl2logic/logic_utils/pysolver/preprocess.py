@@ -14,6 +14,7 @@ def powerset(iterable):
     return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s)+1))
 
 def unpack_count_aggregates(term: AST) -> List[AST]:
+    # {a; b; c} -> a or b or c
     assert term.ast_type == ASTType.Rule
     body = term.body
 
@@ -27,74 +28,11 @@ def unpack_count_aggregates(term: AST) -> List[AST]:
                 # Found aggregate
                 if body_atom.ast_type == ASTType.BodyAggregate and body_atom.function != AggregateFunction.Count:
                     raise ValueError(f"Do not support Aggregate function {body_atom.function}")
-                flip_inequal = { # Flip inequlality direction for left_guard
-                    ComparisonOperator.GreaterEqual : ComparisonOperator.LessEqual,
-                    ComparisonOperator.GreaterThan : ComparisonOperator.LessThan,
-                    ComparisonOperator.LessEqual : ComparisonOperator.GreaterEqual,
-                    ComparisonOperator.LessThan : ComparisonOperator.GreaterThan,
-                }
 
-                # Generate length constraint
-                comparison = []; bound = []
-                try:
-                    if body_atom.left_guard is not None:
-                        comparison.append(flip_inequal[body_atom.left_guard.comparison])
-                        bound.append(body_atom.left_guard.term.symbol.number)
-                    if body_atom.right_guard is not None:
-                        comparison.append(body_atom.right_guard.comparison)
-                        bound.append(body_atom.right_guard.term.symbol.number)
-                except:
-                    # Non-const boundaries
-                    raise ValueError("Do not support variable boundaries for Aggregates")
-                # FIXME: Expanding count aggregates do not work properly when dual-ed.
-                # For now, only accept lower bounds
-                assert len(comparison) == 1
-                assert comparison[0] in [ComparisonOperator.GreaterThan, ComparisonOperator.GreaterEqual]
-
-                powerset_of_aggregates = []
-                # FIXME: only accept lower bounds for now (dual causes some problem for count)
-                # Change this to global constraints
-                # (i.e. a :- {b;c;d}<3 => :- a;b;c;d.)
-                for accept_set in powerset(list(range(len(body_atom.elements)))):
-                    # Check length constraints
-                    flag = True
-                    for comp, bnd in zip(comparison, bound):
-                        if comp == ComparisonOperator.GreaterEqual:
-                            flag = flag and len(accept_set) == bnd
-                        elif comp == ComparisonOperator.GreaterThan:
-                            flag = flag and len(accept_set) == bnd+1
-                    if not flag:
-                        continue
-                    powerset_of_aggregates.append(
-                        [(deepcopy(lit).literal)
-                         for i, lit in enumerate(body_atom.elements) if i in accept_set]
-                    )
-                # for accept_set in powerset(list(range(len(body_atom.elements)))):
-                #     # Check length constraints
-                #     flag = True
-                #     for comp, bnd in zip(comparison, bound):
-                #         if comp == ComparisonOperator.GreaterEqual:
-                #             flag = flag and len(accept_set) >= bnd
-                #         elif comp == ComparisonOperator.GreaterThan:
-                #             flag = flag and len(accept_set) > bnd
-                #         elif comp == ComparisonOperator.LessEqual:
-                #             flag = flag and len(accept_set) <= bnd
-                #         else: # comp == ComparisonOperator.LessThan:
-                #             flag = flag and len(accept_set) < bnd
-                #     if not flag:
-                #         continue
-                #     def negate(lit: AST):
-                #         if lit.sign == Sign.Negation:
-                #             lit.sign = Sign.NoSign
-                #         if lit.sign == Sign.NoSign:
-                #             lit.sign = Sign.Negation
-                #         return lit
-                #     # Collect subsets
-                #     powerset_of_aggregates.append(
-                #         [(deepcopy(lit).literal if i in accept_set else negate(deepcopy(lit).literal))
-                #          for i, lit in enumerate(body_atom.elements)]
-                #     )
-                new_body.append(powerset_of_aggregates)
+                new_body.append(
+                    [(deepcopy(lit).literal)
+                        for lit in body_atom.elements]
+                )
             else:
                 # Non-aggregate
                 new_body.append([[body_lit]])
@@ -107,116 +45,6 @@ def unpack_count_aggregates(term: AST) -> List[AST]:
         new_rule = Rule(
             term.location,
             term.head,
-            unpacked_body
-        )
-        new_rules.append(new_rule)
-
-    return new_rules
-
-def unpack_pool(term):
-    # assert term.ast_type in [ASTType.UnaryOperation, ASTType.BinaryOperation, ASTType.Function, ASTType.Pool, ASTType.SymbolicTerm]
-    terms = []
-
-    if term.ast_type == ASTType.UnaryOperation:
-        new_arguments = unpack_pool(term.argument)
-        for new_argument in new_arguments:
-            new_term = deepcopy(term)
-            new_term.argument = new_argument
-            terms.append(new_term)
-    elif term.ast_type == ASTType.BinaryOperation:
-        new_lefts = unpack_pool(term.left)
-        new_rights = unpack_pool(term.right)
-        for new_left in new_lefts:
-            for new_right in new_rights:
-                new_term = deepcopy(term)
-                new_term.left = new_left
-                new_term.right = new_right
-                terms.append(new_term)
-    elif term.ast_type == ASTType.Function:
-        new_arguments_pow = []
-        for argument in term.arguments:
-            new_arguments_pow.append(unpack_pool(argument))
-        for new_arguments in itertools.product(*new_arguments_pow):
-            assert len(new_arguments) == len(term.arguments)
-            new_term = deepcopy(term)
-            new_term.arguments = new_arguments
-            terms.append(new_term)
-    elif term.ast_type == ASTType.Pool:
-        new_arguments_pow = []
-        for argument in term.arguments:
-            new_arguments_pow.append(unpack_pool(argument))
-        for new_arguments in itertools.product(*new_arguments_pow):
-            assert len(new_arguments) == len(term.arguments)
-            terms.extend(new_arguments)
-            # terms = new_arguments + terms # To obtain proper tree, move pool infront of other predicates.
-    elif term.ast_type == ASTType.SymbolicTerm or term.ast_type == ASTType.Variable:
-        terms = [term]
-    else:
-        raise ValueError(f"Unsupported type {term.ast_type}")
-
-    assert len(terms) >= 1
-
-
-    return terms
-
-def unpack_head_pool(rule: AST) -> List[AST] :
-    assert rule.ast_type == ASTType.Rule
-
-    head = rule.head
-    if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
-        if head.atom.ast_type == ASTType.BooleanConstant:
-            return [rule] # Do nothing
-        raise ValueError(f"All rule heads must be non-conditional simple literals.")
-
-    heads = unpack_pool(head.atom.symbol) # recursively find pools
-
-    new_rules = [
-        Rule(
-            location=rule.location,
-            head=Literal(
-                location=head.location,
-                sign=head.sign,
-                atom=SymbolicAtom(
-                    symbol=new_head
-                )
-            ),
-            body=rule.body
-        ) for new_head in heads
-    ]
-
-    return new_rules
-
-def unpack_body_pool(rule:AST) -> str :
-    assert rule.ast_type == ASTType.Rule
-    body = rule.body
-
-    new_body = []
-    new_rules = []
-
-    for body_lit in body:
-        if body_lit.ast_type == ASTType.Literal:
-            if body_lit.atom.ast_type == ASTType.SymbolicAtom:
-                new_body.append(
-                    [Literal(
-                        location=body_lit.location,
-                        sign=body_lit.sign,
-                        atom=SymbolicAtom(
-                            symbol=symbol
-                        )
-                    ) for symbol in unpack_pool(body_lit.atom.symbol)]
-                )
-            else:
-                # Comparison or boolean constant
-                new_body.append([body_lit])
-        else:
-            raise ValueError(f"Body contains {body_lit.ast_type}, which is unsupported")
-
-    # Create all possible rules
-    for unpacked_body in itertools.product(*new_body):
-        # Add new rules
-        new_rule = Rule(
-            rule.location,
-            rule.head,
             unpacked_body
         )
         new_rules.append(new_rule)
@@ -405,27 +233,23 @@ def preprocess(term_str):
 
     if term.ast_type == ASTType.Rule:
         unpacked_count_terms = unpack_count_aggregates(term)
+        
+        unpooled_terms = []
+        for term in unpacked_count_terms:
+            unpooled_terms.extend(term.unpool())
 
-        for t1 in unpacked_count_terms:
-            # Convert def.neg. heads into explicit terms
-            unpacked_head_pool_terms = unpack_head_pool(t1)
+        for t3 in unpooled_terms:
+            t3 = translate_numeric_string(t3)
+            new_rules += str(t3) + "\n"
 
-            for t2 in unpacked_head_pool_terms:
-                # Convert def.neg. body literals into explicit term
-                unpacked_body_pool_terms = unpack_body_pool(t2)
-
-                for t3 in unpacked_body_pool_terms:
-                    t3 = translate_numeric_string(t3)
-                    new_rules += str(t3) + "\n"
-
-                    # Dual statements
-                    for dual in get_dual(t3):
-                        new_rules += str(dual) + r" % dual" + "\n"
-                    # not pred :- -pred DISABLED TO PREVENT INFINITE LOOPS
-                    for explicit_dual in get_explicit_dual(t3):
-                        new_rules += str(explicit_dual) + r" % dual" + "\n"
-                    # :- a, -a
-                    for constraint in get_constraints(t3):
-                        new_rules += str(constraint) + "\n"
+            # Dual statements
+            for dual in get_dual(t3):
+                new_rules += str(dual) + r" % dual" + "\n"
+            # not pred :- -pred DISABLED TO PREVENT INFINITE LOOPS
+            for explicit_dual in get_explicit_dual(t3):
+                new_rules += str(explicit_dual) + r" % dual" + "\n"
+            # :- a, -a
+            for constraint in get_constraints(t3):
+                new_rules += str(constraint) + "\n"
 
     return "% " + str(term) + "\n" + new_rules
