@@ -9,9 +9,10 @@ from nl2logic.database_utils.queries import db_find_missing_ontology
 
 def validate_asp_list(asp_list: List, goal: AST):
     result = []
+    error = []
     for asp_dict in asp_list:
         if not isinstance(asp_dict, dict) or "asp" not in asp_dict or "comment" not in asp_dict:
-            print("Wrong dict key")
+            error.append("Wrong dict key")
             continue
         asp: str = asp_dict["asp"].strip()
         
@@ -25,28 +26,29 @@ def validate_asp_list(asp_list: List, goal: AST):
         _, success = asp_parse_program([asp])
         success = success[0]["code"] == 0
         if not success:
-            print("Syntax error")
-            continue # Syntax error
+            error.append("Syntax error")
+            continue
         parsed_asp = parse_line(asp)
         if parsed_asp.ast_type != ASTType.Rule:
-            print("Syntax error: Not rule")
+            error.append("Syntax error: not rule")
             continue
         if parsed_asp.head.ast_type != ASTType.Literal:
-            print("Syntax error: Head not literal")
+            error.append("Syntax error: head should be a plain literal")
             continue
 
         # Heuristic. Goal should unify with the goal to prove.
-        if unify(goal, parsed_asp.head) is None:
-            print("Generated head not unified to goal")
+        if unify(goal, parsed_asp.unpool()[0].head) is None:
+            error.append("Generated head does not unify to goal")
             continue
 
         const_list = asp_extract_const_list(asp, exclude_underscore=True)
         missing_ontology = db_find_missing_ontology(const_list)
         if len(missing_ontology) > 0: # missing ontology exists
-            print("Missing ontology")
+            error.append(f"Missing ontology: {missing_ontology}")
             continue
 
         # If all satisfied, add to successful results.
         asp_dict["asp"] = asp
         result.append(asp_dict)
-    return result
+        error.append("Success")
+    return result, error

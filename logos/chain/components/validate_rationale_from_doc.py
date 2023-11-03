@@ -25,7 +25,7 @@ def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[str, 
         SystemMessagePromptTemplate.from_template(VALIDATE_RATIONALE_FROM_DOC_PROMPT),
         ("human", "Document:\n{body_text}"),
         SystemMessagePromptTemplate.from_template(VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT),
-        ("human", "Sentence: {goal}")
+        ("human", "Sentence: {goal}"),
     ])
 
     # Run LLMChain

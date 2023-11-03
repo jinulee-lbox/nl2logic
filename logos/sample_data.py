@@ -33,15 +33,15 @@ def main():
         case_data.extend(rawcase[:NUM_PER_CASE])
     db.close()
 
-    for case in case_data:
+    for case in case_data[3:4]:
         print(json.dumps(case, indent=4, ensure_ascii=False))
         result, program = convert_doc_to_asp(case, few_shot_n=8)
         result = result[0] # First goal only
-        with open("logs/logos_trial_result.txt", "a") as file:
-            file.write("==============================\n")
-            file.write(f"{json.dumps(case, indent=4, ensure_ascii=False)}\n\n")
-            file.write(str(result) + "\n")
-            file.write(json.dumps(program, indent=4, ensure_ascii=False) + "\n\n")
+        # with open("logs/logos_trial_result.txt", "a") as file:
+        #     file.write("==============================\n")
+        #     file.write(f"{json.dumps(case, indent=4, ensure_ascii=False)}\n\n")
+        #     file.write(str(result) + "\n")
+        #     file.write(json.dumps(program, indent=4, ensure_ascii=False) + "\n\n")
         logging.info("==============================\n")
         logging.info(f"{json.dumps(case, indent=4, ensure_ascii=False)}\n\n")
         logging.info(str(result) + "\n")

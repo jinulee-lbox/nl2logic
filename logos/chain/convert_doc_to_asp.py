@@ -93,27 +93,31 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
             else:
                 # Select valid examples (at the back of the list, by find_head_matching_example param `more_related_goes_later`)
                 rule_examples = rule_examples[-few_shot_n:]
-            # logging.info("---------------------")
-            # logging.info("Examples:")
-            # for ex in rule_examples: logging.info(f"-    {ex['comment']}\n  -> {ex['asp']}")
-            # logging.info("---------------------")
+            logging.info("---------------------")
+            logging.info("Examples:")
+            for ex in rule_examples: logging.info(f"-    {ex['comment']}\n  -> {ex['asp']}")
+            logging.info("---------------------")
 
             # Core step! generate ASP and rationale from the document.
             proved = False; curr_retry_count=retry_count
+            error_prompt = None
             while not proved and curr_retry_count > 0:
                 logging.info(f"Retry count: {curr_retry_count} left")
                 curr_retry_count -= 1
 
                 # Generate possible ASPs
-                result = get_asp_and_rationale_from_doc(curr_goal, curr_goal_str, body_text, rule_examples)
+                result = get_asp_and_rationale_from_doc(curr_goal, curr_goal_str, body_text, rule_examples, error_prompt)
                 if result is None:
                     logging.info("LLM failed to generate valid JSON")
                     continue
 
                 # Syntax / Ontology checking
-                valid_new_asps = validate_asp_list(result, curr_goal)
+                valid_new_asps, error = validate_asp_list(result, curr_goal)
                 if len(valid_new_asps) == 0:
-                    logging.info("LLM failed to generate valid ASP code(syntax error, ontology, ...)")
+                    error_prompt = ""
+                    for r, e in zip(result, error):
+                        logging.info(f"LLM failed to generate valid ASP code: {str(r['asp'])} => {e}")
+                        error_prompt += str(r['asp']) + "\n" + "Error: " + e
                     continue
 
                 # Generate
