@@ -30,8 +30,8 @@ def unpack_count_aggregates(term: AST) -> List[AST]:
                     raise ValueError(f"Do not support Aggregate function {body_atom.function}")
 
                 new_body.append(
-                    [[(deepcopy(lit).literal)
-                        for lit in body_atom.elements]]
+                    [[(deepcopy(lit).literal)]
+                        for lit in body_atom.elements]
                 )
             else:
                 # Non-aggregate
