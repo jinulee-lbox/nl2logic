@@ -14,14 +14,14 @@ def asp_parse_program(terms: List[str]):
     parsed_program = ""
     for term in terms:
         # # Parsing.
-        # try:
-        parsed_program += preprocess(term) # Unpack pooling and #count aggregates, negated heads to constraints, ...
-        # except Exception as e:
-        #     success.append({
-        #         'code': 10,
-        #         'msg': "Syntax error " + str(e)
-        #     })
-        #     continue
+        try:
+            parsed_program += preprocess(term) # Unpack pooling and #count aggregates, negated heads to constraints, ...
+        except Exception as e:
+            success.append({
+                'code': 10,
+                'msg': "Syntax error " + str(e)
+            })
+            continue
         # Success code
         success.append({
             'code': 0,

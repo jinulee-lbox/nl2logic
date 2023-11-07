@@ -57,7 +57,9 @@ def get_dual(rule: AST) -> List[AST]:
 
     head = rule.head
     if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
-        if head.atom.ast_type == ASTType.BooleanConstant:
+        if 'atom' not in head.child_keys:
+            return [] # Do nothing
+        elif head.atom.ast_type == ASTType.BooleanConstant:
             return [] # Do nothing
         raise ValueError("All rule heads must be non-conditional simple literals")
     if head.sign == Sign.Negation:
@@ -91,7 +93,9 @@ def get_explicit_dual(rule:AST) -> List[AST] :
 
     head = rule.head
     if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
-        if head.atom.ast_type == ASTType.BooleanConstant:
+        if 'atom' not in head.child_keys:
+            return [] # Do nothing
+        elif head.atom.ast_type == ASTType.BooleanConstant:
             return [] # Do nothing
         raise ValueError("All rule heads must be non-conditional simple literals")
     
@@ -140,7 +144,9 @@ def get_constraints(rule:AST) -> [AST] :
 
     head = rule.head
     if not (head.ast_type == ASTType.Literal and head.atom.ast_type == ASTType.SymbolicAtom):
-        if head.atom.ast_type == ASTType.BooleanConstant:
+        if 'atom' not in head.child_keys:
+            return [] # Do nothing
+        elif head.atom.ast_type == ASTType.BooleanConstant:
             return [] # Do nothing
         raise ValueError("All rule heads must be non-conditional simple literals")
     
@@ -194,7 +200,9 @@ def translate_numeric_string(rule:AST) -> AST:
         return new_term
 
     if rule.head.ast_type == ASTType.Literal:
-        if rule.head.atom.ast_type == ASTType.BooleanConstant:
+        if 'atom' not in rule.head.child_keys:
+            pass
+        elif rule.head.atom.ast_type == ASTType.BooleanConstant:
             pass # Do nothing
         else:
             rule.head.atom.symbol = convert_num_str(rule.head.atom.symbol)
