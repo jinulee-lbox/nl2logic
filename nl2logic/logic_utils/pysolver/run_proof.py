@@ -32,19 +32,19 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
 
 def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc_symbol: str, proved_goal_table: dict) -> List[AST]:
     logging.debug(f"?- {conc_symbol}.")
-    result = set()
+    result = []
     # print(preprocessed_program)
 
     rule_table, _ = parse_program(preprocessed_program)
     goal = parse_line(conc_symbol).head
 
-    proofs, unproved_goals = solve(goal, rule_table, proved_goal_table, get_unproved_goals=True, initial_call=False, unproved_goals=list())
+    proofs = solve(goal, rule_table, proved_goal_table, initial_call=False, unproved_callback=lambda x,y : result.append((x, y)))
     if len(proofs) > 0:
         # Given goal is proved
         # -> change status to not exist
         # unproved_goals = [(x[0], NOT_EXIST) for x in unproved_goals]
         pass
-    return unproved_goals
+    return result
 
 if __name__ == "__main__":
 
@@ -59,5 +59,5 @@ b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
 z(k).
 """
-    result = get_unproved_goals_from_preprocessed_program(program, "fin(k).", dict())
+    result = get_unproved_goals_from_preprocessed_program(program, "fin(k).", {})
     print([str(x[0]) for x in result])

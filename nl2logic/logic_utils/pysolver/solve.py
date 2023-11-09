@@ -39,7 +39,7 @@ def consistency_check(rule_dict, proved_goal_table):
         return False
     return True
 
-def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, initial_call=True, get_unproved_goals=False, unproved_goals:List=None) -> List[Stack]:
+def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, initial_call=True, unproved_callback=None) -> List[Stack]:
     # print(f"Start proof for {goal}")
     if proved_goal_table is None:
         proved_goal_table = dict()
@@ -64,7 +64,7 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
             # Non-parent proof
             queue.append(curr_stack.get_next_goal())
         else:
-            _solve(curr_stack, rule_dict, queue, proved_goal_table, unproved_goals)
+            solve_subgoal(curr_stack, rule_dict, queue, proved_goal_table, unproved_callback)
     # print(f"End proof for {goal} : {len(proofs)} solutions")
 
     # Clean proved_goal_table
@@ -72,11 +72,9 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
         if proof_list is not None and proof_list[0] is None:
             proof_list.pop(0)
 
-    if get_unproved_goals:
-        return proofs, unproved_goals
     return proofs
 
-def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], proved_goal_table: Dict[AST, List[Stack]], unproved_goals: List = None) -> None:
+def solve_subgoal(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], proved_goal_table: Dict[AST, List[Stack]], unproved_callback = None) -> None:
     # stack: pointer to the current goal in the full proof
     goal = stack.goal
     
@@ -173,7 +171,7 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
     if is_negated(goal):
         new_goal = deepcopy(stack.goal)
         new_goal.sign = Sign.NoSign
-        new_proved_stacks = solve(new_goal, rule_dict, initial_call=False, proved_goal_table=proved_goal_table, unproved_goals=unproved_goals)
+        new_proved_stacks = solve(new_goal, rule_dict, initial_call=False, proved_goal_table=proved_goal_table, unproved_callback=unproved_callback)
         if len(new_proved_stacks) >= 1:
             # TODO add callback for trace failure
             # print(goal, "failed because", new_goal, "is proved")
@@ -232,11 +230,11 @@ def _solve(stack: Stack, rule_dict: Dict[str, List[AST]], queue: List[Stack], pr
         stack.proved = True
         queue.append(stack)
     
-    # Track unproved goals
-    if unproved_goals is not None and not is_any_rule_unified:
+    # Track unproved goals by callback
+    if unproved_callback is not None and not is_any_rule_unified:
         if not stack.proved:
             # a goal is popped, but not proved nor inductively proceeded to subgoals
-            unproved_goals.append((stack.goal, UNPROVED_YET))
+            unproved_callback(stack.goal, UNPROVED_YET)
         elif stack.proved and is_negated(stack.goal):
             # `not x` is proved because `x` cannot be proved
-            unproved_goals.append((flip_sign(stack.goal), NOT_EXIST))
+            unproved_callback(flip_sign(stack.goal), NOT_EXIST)
