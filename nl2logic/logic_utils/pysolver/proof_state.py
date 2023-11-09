@@ -1,32 +1,31 @@
-from typing import List, Tuple
+from typing import List
 from copy import deepcopy, copy
 from clingo.ast import *
-import pickle
 
-from .utils import is_negated, flip_sign
-from .unify import unify, substitute
+from .utils import flip_sign
+from .unify import substitute
 
-class Stack():
+class ProofState():
     def __init__(self, goal: AST):
         assert goal.ast_type == ASTType.Literal
         self.goal = goal
         self.original_goal = deepcopy(goal) # Original goal before binding, for caching purpose
         self.proved = False
-        self.parent: Stack = None
+        self.parent: ProofState = None
         # Children
-        self.proved_substacks: List[Stack]= [] # proved
-        self.substack: Stack = None # proving
+        self.proved_substates: List[ProofState]= [] # proved
+        self.substate: ProofState = None # proving
         self.goal_to_prove: List[AST] = [] # will prove
         # Dual marker
         self.is_dual = False
-        # Cache marker (if True, proved_substacks list is incomplete)
+        # Cache marker (if True, proved_substates list is incomplete)
         self.from_cache = False
 
     def get_root(self):
-        curr_stack = self
-        while curr_stack.parent is not None:
-            curr_stack = curr_stack.parent
-        return curr_stack
+        curr_state = self
+        while curr_state.parent is not None:
+            curr_state = curr_state.parent
+        return curr_state
 
     # TODO prevent infinite loops while proving
     def detect_loop(self) -> str:
@@ -36,20 +35,20 @@ class Stack():
         
         # Find loop in parents
         # Constraint Answer Set Programming Without Grounding - Appendix B
-        curr_stack = self.parent
-        while curr_stack is not None:
+        curr_state = self.parent
+        while curr_state is not None:
             # Found a loop
-            if goal == curr_stack.goal:
+            if goal == curr_state.goal:
                 # FIXME strictly, return of unify() (bindings) should only contain var-var mapping
                 loop_found = True
                 positive_loop = True
                 break
-            elif goal == flip_sign(curr_stack.goal):
+            elif goal == flip_sign(curr_state.goal):
                 # FIXME strictly, return of unify() (bindings) should only contain var-var mapping
                 loop_found = True
                 positive_loop = False
                 break
-            curr_stack = curr_stack.parent
+            curr_state = curr_state.parent
         # Return result
         if loop_found:
             if positive_loop:
@@ -63,13 +62,13 @@ class Stack():
         if len(bindings) == 0:
             # Time cutting -> empty binding does not need recursion
             return
-        stack = self
-        while stack is not None:
+        state = self
+        while state is not None:
             # Replace variable to goal
-            substitute(stack.goal, bindings)
-            for sibling in stack.goal_to_prove:
+            substitute(state.goal, bindings)
+            for sibling in state.goal_to_prove:
                 substitute(sibling, bindings)
-            stack = stack.parent
+            state = state.parent
 
     def __str__(self) -> str:
         return self._pprint(indent=0)
@@ -78,11 +77,11 @@ class Stack():
         string += str(self.goal)
         string += "\n"
         # Proved subgoals
-        for subgoal in self.proved_substacks:
+        for subgoal in self.proved_substates:
             string += subgoal._pprint(indent+1)
         # Current subgoal
-        if self.substack is not None:
-            string += self.substack._pprint(indent+1)
+        if self.substate is not None:
+            string += self.substate._pprint(indent+1)
         # Remaining goals
         if len(self.goal_to_prove) > 0:
             string += "  " * indent + "Remaining goals: "
@@ -92,45 +91,45 @@ class Stack():
     
     def get_next_goal(self):
         assert self.proved
-        curr_stack = deepcopy(self)
+        curr_state = deepcopy(self)
 
         # Update global constraints and proved literal cache
-        # curr_stack.get_proved_goals().add(self.goal)
+        # curr_state.get_proved_goals().add(self.goal)
 
-        parent = curr_stack.parent
+        parent = curr_state.parent
         if parent is None:
-            return curr_stack
-        # Move proved goal into proven_substack
-        parent.proved_substacks.append(curr_stack)
+            return curr_state
+        # Move proved goal into proven_substate
+        parent.proved_substates.append(curr_state)
         # apply binding
-        # curr_stack.bind(unify(self.original_goal, self.goal))
-        if len(curr_stack.goal_to_prove) > 0:
+        # curr_state.bind(unify(self.original_goal, self.goal))
+        if len(curr_state.goal_to_prove) > 0:
             # Some portion of rule is proved -> move to next body literal
-            next_goal = curr_stack.goal_to_prove[0]
-            next_stack = Stack(next_goal)
-            if len(curr_stack.goal_to_prove) > 1:
-                next_stack.goal_to_prove = curr_stack.goal_to_prove[1:]
+            next_goal = curr_state.goal_to_prove[0]
+            next_state = ProofState(next_goal)
+            if len(curr_state.goal_to_prove) > 1:
+                next_state.goal_to_prove = curr_state.goal_to_prove[1:]
             else:
-                next_stack.goal_to_prove = []
-            parent.substack = next_stack
-            next_stack.parent = parent
+                next_state.goal_to_prove = []
+            parent.substate = next_state
+            next_state.parent = parent
         else:
             # Last element of rule is proved -> parent is proved
             parent.proved = True
             # No subgoal to prove!
-            curr_stack.parent.substack = None
+            curr_state.parent.substate = None
             # Append to queue
-            next_stack = parent
+            next_state = parent
         
         # Detach parent for runtime efficiency
-        curr_stack.parent = None
+        curr_state.parent = None
         # Remove goal_to_prove
-        curr_stack.goal_to_prove = []
-        return next_stack
+        curr_state.goal_to_prove = []
+        return next_state
     
     def find_goals_on_prove(self):
         # Find all goals that are currently being proved.
-        # Goals are finally cached when it does not appear in this list for whole stack.
+        # Goals are finally cached when it does not appear in this list for whole state.
         curr = self.parent
         result = set()
         while curr is not None:
@@ -146,9 +145,9 @@ class Stack():
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k in ["substack"]:
+            if k in ["substate"]:
                 continue
-            elif k in ["proved_substacks"]:
+            elif k in ["proved_substates"]:
                 setattr(result, k, copy(v)) # Shallow copy for performance increase
             else:
                 setattr(result, k, deepcopy(v, memo))

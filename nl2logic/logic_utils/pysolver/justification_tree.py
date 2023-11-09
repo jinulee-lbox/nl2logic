@@ -6,7 +6,7 @@ from collections import defaultdict
 from clingo.ast import *
 from clingo.control import *
 from clingo.symbol import *
-from .stack import Stack
+from .proof_state import ProofState
 from .utils import anonymize_vars
 
 class JustificationTreeNode():
@@ -75,21 +75,21 @@ class JustificationTreeNode():
         return "`" + self.repr + "`"
 
 class JustificationTree():
-    def __init__(self, proofs: List[Stack], proved_goal_table: Dict[AST, List[Stack]]):
+    def __init__(self, proofs: List[ProofState], proved_goal_table: Dict[AST, List[ProofState]]):
         if proofs is None:
             # Empty tree list
             return
 
         self.root = JustificationTreeNode("")
-        init_proofs = [stack.get_root() for stack in proofs]
+        init_proofs = [state.get_root() for state in proofs]
         bfs = [(init_proofs, self.root)]
-        # bfs on stack to traverse all nodes
+        # bfs on state to traverse all nodes
         while len(bfs) > 0:
             proofs, parent_node = bfs.pop(0)
             # Group proofs by original_goal (i.e. rules that directly generate the fact)
             unique_goals = defaultdict(list)
-            for stack in proofs:
-                unique_goals[stack.goal].append(stack)
+            for state in proofs:
+                unique_goals[state.goal].append(state)
 
             for key, value in unique_goals.items():
                 # Add a unique child node
@@ -98,17 +98,17 @@ class JustificationTree():
 
                 # Collect subgoals
                 unique_subgoals = defaultdict(list)
-                for stack in value:
-                    # Expand proof stacks if they are from_cache
-                    if stack.from_cache:
-                        # They do not have valid proved_substacks;
+                for state in value:
+                    # Expand proof states if they are from_cache
+                    if state.from_cache:
+                        # They do not have valid proved_substates;
                         # Retrieve from cache
                         if proved_goal_table is not None:
-                            for instance in proved_goal_table[stack.goal]:
-                                for subgoal in instance.proved_substacks:
+                            for instance in proved_goal_table[state.goal]:
+                                for subgoal in instance.proved_substates:
                                     unique_subgoals[subgoal.goal].append(subgoal)
                     else:
-                        for subgoal in stack.proved_substacks:
+                        for subgoal in state.proved_substates:
                             unique_subgoals[subgoal.goal].append(subgoal)
                 
                 for subkey, subvalue in unique_subgoals.items():
