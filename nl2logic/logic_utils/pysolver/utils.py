@@ -2,6 +2,7 @@ from copy import deepcopy
 from clingo.ast import *
 from clingo.symbol import *
 import re
+from enum import Enum
 
 UNIT_FACTOR = {
     # Numeric units
@@ -26,14 +27,19 @@ UNIT_FACTOR = {
     "원": 1,
     "도": 1000,
 }
-# Markers for failed goals TODO use Enum
-NOT_EXIST = 0
-UNPROVED_YET = 1
-def failure_code_to_str(failure):
-    if failure == NOT_EXIST:
+# Markers for unproved goals
+class UnprovedGoalState(Enum):
+    NOT_EXIST = 0
+    UNPROVED_YET = 1
+    BACKTRACK = 2
+
+def unproved_goal_state_to_str(failure):
+    if failure == UnprovedGoalState.NOT_EXIST:
         return "NOT_EXIST"
-    if failure == UNPROVED_YET:
+    if failure == UnprovedGoalState.UNPROVED_YET:
         return "UNPROVED_YET"
+    if failure == UnprovedGoalState.BACKTRACK:
+        return "BACKTRACK"
     else:
         raise ValueError("Wrong failed-goal-marker")
 

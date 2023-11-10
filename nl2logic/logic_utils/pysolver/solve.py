@@ -7,7 +7,7 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-from .utils import get_hash_head, is_negated, is_ground, flip_sign, NOT_EXIST, UNPROVED_YET
+from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState
 from .unify import unify, substitute
 from .proof_state import ProofState
 
@@ -207,12 +207,14 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
         proved_goal_table[goal] = None
 
     # Track unproved goals by callback
-    if unproved_callback is not None and not is_any_rule_unified:
+    if unproved_callback is not None:
         if not state.proved:
-            # a goal is popped, but not proved nor inductively proceeded to subgoals
-            unproved_callback(state.goal, UNPROVED_YET)
-        elif state.proved and is_negated(state.goal):
+            if not is_any_rule_unified:
+                unproved_callback(state.goal, UnprovedGoalState.UNPROVED_YET) # No rules that unify with a positive goal
+            else:
+                unproved_callback(state.goal, UnprovedGoalState.BACKTRACK) # Despite rules exist, 
+        elif state.proved and is_negated(state.goal) and not is_any_rule_unified:
             # `not x` is proved because `x` cannot be proved
-            unproved_callback(flip_sign(state.goal), NOT_EXIST)
+            unproved_callback(flip_sign(state.goal), UnprovedGoalState.NOT_EXIST) # Although `not x` is considered as proved, need to check x
 
     return proved_states

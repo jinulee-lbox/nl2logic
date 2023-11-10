@@ -3,7 +3,6 @@ from typing import *
 from .parse import parse_program, parse_line
 from .solve import solve
 from .justification_tree import *
-from .utils import flip_sign, is_negated, NOT_EXIST, UNPROVED_YET
 import logging
 
 def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_symbol: str, proved_goal_table: dict) -> Tuple[JustificationTree, bool]:
@@ -39,14 +38,10 @@ def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc
     goal = parse_line(conc_symbol).head
 
     proofs = solve(goal, rule_table, proved_goal_table, initial_call=False, unproved_callback=lambda x,y : result.append((x, y)))
-    if len(proofs) > 0:
-        # Given goal is proved
-        # -> change status to not exist
-        # unproved_goals = [(x[0], NOT_EXIST) for x in unproved_goals]
-        pass
     return result
 
 if __name__ == "__main__":
+    from .utils import unproved_goal_state_to_str
 
     program = """fin(X) :- not a(X).
 not fin(X) :- a(X).
@@ -60,4 +55,4 @@ not b(X, 2) :- not d(X).
 z(k).
 """
     result = get_unproved_goals_from_preprocessed_program(program, "not fin(_).", {})
-    print([str(x[0]) for x in result])
+    print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])
