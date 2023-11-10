@@ -15,7 +15,6 @@ class ProofState():
         self.goal = deepcopy(goal)
         self.bindings: Dict[AST, AST] = {}
         self.rule: AST = None
-        self.is_dual: bool = None
         # Children
         self.proof: List[ProofState]= [] # proved
 

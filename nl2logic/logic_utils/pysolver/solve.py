@@ -14,7 +14,7 @@ from .proof_state import ProofState
 def consistency_check(rule_dict, proved_goal_table):
     if "#false" not in rule_dict:
         return True
-    false_lit = rule_dict["#false"][0][0].head # [0](first rule)[0](rule itself) #cf. [*][1]: is_dual
+    false_lit = rule_dict["#false"][0].head # retrieve literal `#false`
     if solve(false_lit, rule_dict, initial_call=False, proved_goal_table=proved_goal_table):
         return False
     return True
@@ -129,7 +129,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
     is_any_rule_unified = False
 
     # apply rules recursively
-    for rule, is_dual in relevant_rules:
+    for rule in relevant_rules:
         # Check if goal unifies with rule head, and get variable mapping
         bindings = unify(goal, rule.head)
         if bindings is None:
@@ -184,7 +184,6 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
             for target_state, proof in body_subset_proofs:
                 target_state.add_proof(proof, rule)
                 proved_states.append(target_state)
-                target_state.is_dual = is_dual
                 
     # Recover original state
     state = original_state
