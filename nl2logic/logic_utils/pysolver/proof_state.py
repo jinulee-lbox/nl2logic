@@ -8,11 +8,11 @@ from .unify import unify, substitute
 class ProofState():
     def __init__(self, goal: AST):
         assert goal.ast_type == ASTType.Literal
-        self.goal = goal
+        self.original_goal = goal
         self.proved = False
         self.parent: ProofState = None
         # Bindings
-        self.bound_goal = deepcopy(goal)
+        self.goal = deepcopy(goal)
         self.bindings: Dict[AST, AST] = {}
         self.rule: AST = None
         self.is_dual: bool = None
@@ -59,7 +59,7 @@ class ProofState():
         return self._pprint(indent=0)
     def _pprint(self, indent: int) -> str:
         string = "  " * indent
-        string += f"{str(self.bound_goal)} [{str(self.goal)}]\n"
+        string += f"{str(self.goal)}\n"
         # Proved subgoals
         for subgoal in self.proof:
             string += subgoal._pprint(indent+1)
@@ -69,8 +69,8 @@ class ProofState():
         self.proved = True
 
         for p in proof:
-            substitute(self.bound_goal, p.bindings)
-        self.bindings = unify(self.goal, self.bound_goal)
+            substitute(self.goal, p.bindings)
+        self.bindings = unify(self.original_goal, self.goal)
         self.rule = rule
 
         # Co-link current state and subgoals

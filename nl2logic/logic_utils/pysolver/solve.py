@@ -36,7 +36,7 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
 
 def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_goal_table: Dict[AST, List[ProofState]], unproved_callback = None) -> List[ProofState]:
     # state: pointer to the current goal in the full proof
-    goal = state.bound_goal
+    goal = state.goal
     
     ##### 1. Check cached goals #####
     if goal in proved_goal_table: # At least one proof is found
@@ -107,7 +107,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
 
     ##### 4. Check classic negation (not x) #####
     if is_negated(goal):
-        new_goal = deepcopy(state.bound_goal)
+        new_goal = deepcopy(state.goal)
         new_goal.sign = Sign.NoSign
         new_proved_states = recursive_solve(ProofState(new_goal), rule_dict, proved_goal_table, unproved_callback)
         if len(new_proved_states) >= 1:
@@ -139,7 +139,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
 
         # State base to proof
         state = deepcopy(original_state)
-        substitute(state.bound_goal, bindings)
+        substitute(state.goal, bindings)
 
         # Add binding information created by rules
         if len(rule.body) == 0:
@@ -211,9 +211,9 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
     if unproved_callback is not None and not is_any_rule_unified:
         if not state.proved:
             # a goal is popped, but not proved nor inductively proceeded to subgoals
-            unproved_callback(state.bound_goal, UNPROVED_YET)
+            unproved_callback(state.goal, UNPROVED_YET)
         elif state.proved and is_negated(state.goal):
             # `not x` is proved because `x` cannot be proved
-            unproved_callback(flip_sign(state.bound_goal), NOT_EXIST)
+            unproved_callback(flip_sign(state.goal), NOT_EXIST)
 
     return proved_states
