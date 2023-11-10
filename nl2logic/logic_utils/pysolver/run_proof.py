@@ -59,5 +59,5 @@ b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
 z(k).
 """
-    result = get_unproved_goals_from_preprocessed_program(program, "fin(k).", {})
+    result = get_unproved_goals_from_preprocessed_program(program, "not fin(_).", {})
     print([str(x[0]) for x in result])

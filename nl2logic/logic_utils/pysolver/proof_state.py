@@ -1,25 +1,23 @@
-from typing import List
+from typing import List, Tuple, Dict
 from copy import deepcopy, copy
 from clingo.ast import *
 
 from .utils import flip_sign
-from .unify import substitute
+from .unify import unify, substitute
 
 class ProofState():
     def __init__(self, goal: AST):
         assert goal.ast_type == ASTType.Literal
         self.goal = goal
-        self.original_goal = deepcopy(goal) # Original goal before binding, for caching purpose
         self.proved = False
         self.parent: ProofState = None
+        # Bindings
+        self.bound_goal = deepcopy(goal)
+        self.bindings: Dict[AST, AST] = {}
+        self.rule: AST = None
+        self.is_dual: bool = None
         # Children
-        self.proved_substates: List[ProofState]= [] # proved
-        self.substate: ProofState = None # proving
-        self.goal_to_prove: List[AST] = [] # will prove
-        # Dual marker
-        self.is_dual = False
-        # Cache marker (if True, proved_substates list is incomplete)
-        self.from_cache = False
+        self.proof: List[ProofState]= [] # proved
 
     def get_root(self):
         curr_state = self
@@ -27,7 +25,6 @@ class ProofState():
             curr_state = curr_state.parent
         return curr_state
 
-    # TODO prevent infinite loops while proving
     def detect_loop(self) -> str:
         goal = self.goal
         loop_found = False
@@ -58,97 +55,36 @@ class ProofState():
         else:
             return "none"
 
-    def bind(self, bindings):
-        if len(bindings) == 0:
-            # Time cutting -> empty binding does not need recursion
-            return
-        state = self
-        while state is not None:
-            # Replace variable to goal
-            substitute(state.goal, bindings)
-            for sibling in state.goal_to_prove:
-                substitute(sibling, bindings)
-            state = state.parent
-
     def __str__(self) -> str:
         return self._pprint(indent=0)
     def _pprint(self, indent: int) -> str:
         string = "  " * indent
-        string += str(self.goal)
-        string += "\n"
+        string += f"{str(self.bound_goal)} [{str(self.goal)}]\n"
         # Proved subgoals
-        for subgoal in self.proved_substates:
+        for subgoal in self.proof:
             string += subgoal._pprint(indent+1)
-        # Current subgoal
-        if self.substate is not None:
-            string += self.substate._pprint(indent+1)
-        # Remaining goals
-        if len(self.goal_to_prove) > 0:
-            string += "  " * indent + "Remaining goals: "
-            string += str([str(goal) for goal in self.goal_to_prove])
-            string += "\n"
         return string
-    
-    def get_next_goal(self):
-        assert self.proved
-        curr_state = deepcopy(self)
 
-        # Update global constraints and proved literal cache
-        # curr_state.get_proved_goals().add(self.goal)
+    def add_proof(self, proof, rule):
+        self.proved = True
 
-        parent = curr_state.parent
-        if parent is None:
-            return curr_state
-        # Move proved goal into proven_substate
-        parent.proved_substates.append(curr_state)
-        # apply binding
-        # curr_state.bind(unify(self.original_goal, self.goal))
-        if len(curr_state.goal_to_prove) > 0:
-            # Some portion of rule is proved -> move to next body literal
-            next_goal = curr_state.goal_to_prove[0]
-            next_state = ProofState(next_goal)
-            if len(curr_state.goal_to_prove) > 1:
-                next_state.goal_to_prove = curr_state.goal_to_prove[1:]
-            else:
-                next_state.goal_to_prove = []
-            parent.substate = next_state
-            next_state.parent = parent
-        else:
-            # Last element of rule is proved -> parent is proved
-            parent.proved = True
-            # No subgoal to prove!
-            curr_state.parent.substate = None
-            # Append to queue
-            next_state = parent
-        
-        # Detach parent for runtime efficiency
-        curr_state.parent = None
-        # Remove goal_to_prove
-        curr_state.goal_to_prove = []
-        return next_state
-    
-    def find_goals_on_prove(self):
-        # Find all goals that are currently being proved.
-        # Goals are finally cached when it does not appear in this list for whole state.
-        curr = self.parent
-        result = set()
-        while curr is not None:
-            if curr.proved:
-                # Proved goals should not be searched
-                break
-            result.add(curr.goal)
-            curr = curr.parent
-        return result
+        for p in proof:
+            substitute(self.bound_goal, p.bindings)
+        self.bindings = unify(self.goal, self.bound_goal)
+        self.rule = rule
+
+        # Co-link current state and subgoals
+        self.proof = proof
+        for subgoal_state in proof:
+            subgoal_state.parent = self
 
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k in ["substate"]:
-                continue
-            elif k in ["proved_substates"]:
-                setattr(result, k, copy(v)) # Shallow copy for performance increase
+            if k in ["parent"]:
+                setattr(result, k, copy(v)) # Shallow copy to prevent infinite recursion
             else:
                 setattr(result, k, deepcopy(v, memo))
         return result
