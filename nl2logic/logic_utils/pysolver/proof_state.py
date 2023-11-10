@@ -58,7 +58,7 @@ class ProofState():
         return self._pprint(indent=0)
     def _pprint(self, indent: int) -> str:
         string = "  " * indent
-        string += f"{str(self.goal)}\n"
+        string += f"{str(self.goal)} : {str(self.rule)}\n"
         # Proved subgoals
         for subgoal in self.proof:
             string += subgoal._pprint(indent+1)

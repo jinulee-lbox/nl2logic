@@ -19,7 +19,9 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
 
     # Parse and merge trees
     if len(proofs) > 0:
-        tree = JustificationTree(proofs, proved_goal_table)
+        for p in proofs:
+            print(p)
+        tree = JustificationTree(proofs)
         proved=True
     else:
         proved_goal_table[goal] = None # memoization for unproved root goal
@@ -54,5 +56,7 @@ b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
 z(k).
 """
-    result = get_unproved_goals_from_preprocessed_program(program, "not fin(_).", {})
-    print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])
+    result, _ = get_proof_tree_from_preprocessed_program(program, "not fin(_).", {})
+    print(result)
+    # result = get_unproved_goals_from_preprocessed_program(program, "not fin(_).", {})
+    # print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])

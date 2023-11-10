@@ -75,44 +75,45 @@ class JustificationTreeNode():
         return "`" + self.repr + "`"
 
 class JustificationTree():
-    def __init__(self, proofs: List[ProofState], proved_goal_table: Dict[AST, List[ProofState]]):
+    def __init__(self, proofs: List[ProofState]):
         if proofs is None:
             # Empty tree list
             return
 
         self.root = JustificationTreeNode("")
-        init_proofs = [state.get_root() for state in proofs]
-        bfs = [(init_proofs, self.root)]
+        bfs = [(proofs, self.root)]
         # bfs on state to traverse all nodes
         while len(bfs) > 0:
             proofs, parent_node = bfs.pop(0)
-            # Group proofs by original_goal (i.e. rules that directly generate the fact)
+
+            # Group proofs by goal
             unique_goals = defaultdict(list)
             for state in proofs:
                 unique_goals[state.goal].append(state)
 
-            for key, value in unique_goals.items():
-                # Add a unique child node
-                node = JustificationTreeNode(str(key))
+            for goal, states_per_goal in unique_goals.items():
+                # Add a child node
+                node = JustificationTreeNode(str(goal))
                 parent_node.add_child(node)
 
-                # Collect subgoals
-                unique_subgoals = defaultdict(list)
-                for state in value:
-                    # Expand proof states if they are from_cache
-                    if state.from_cache:
-                        # They do not have valid proved_substates;
-                        # Retrieve from cache
-                        if proved_goal_table is not None:
-                            for instance in proved_goal_table[state.goal]:
-                                for subgoal in instance.proved_substates:
-                                    unique_subgoals[subgoal.goal].append(subgoal)
+                # Group proofs by rules
+                substates_per_rule = {}
+                for state in states_per_goal:
+                    if state.rule is None:
+                        # BFS Base case - Proved without rule induction
+                        pass
                     else:
-                        for subgoal in state.proved_substates:
-                            unique_subgoals[subgoal.goal].append(subgoal)
-                
-                for subkey, subvalue in unique_subgoals.items():
-                    bfs.append((subvalue, node))
+                        # BFS Propagation
+                        # Collect subgoals per rule index
+                        # a :- b(X), c(X) -> group all b(X), group all c(X)
+                        if state.rule not in substates_per_rule:
+                            substates_per_rule[state.rule] = [list() for _ in state.rule.body]
+                        for idx, substate in enumerate(state.proof):
+                            substates_per_rule[state.rule][idx].append(substate)
+                # BFS Proceed (group same rules together)
+                for rule, substates_per_idx in substates_per_rule.items():
+                    for ith_goals in substates_per_idx:
+                        bfs.append((ith_goals, node))
         
         if len(self.root.children) == 1:
             self.root = self.root.children[0]
