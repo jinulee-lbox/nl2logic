@@ -73,8 +73,8 @@ def get_dual(rule: AST) -> List[AST]:
     for i in range(body_cnt):
         body_lits = []
         # append body literals
-        for j in range(i):
-            body_lits.append(rule.body[j])
+        # for j in range(i):
+        #     body_lits.append(rule.body[j])
         # flip i-th body literal
         dual_body_lit = deepcopy(rule.body[i])
         dual_body_lit.sign = Sign.NoSign if dual_body_lit.sign == Sign.Negation else Sign.Negation

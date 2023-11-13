@@ -2,7 +2,7 @@ from typing import List, Tuple, Dict
 from copy import deepcopy, copy
 from clingo.ast import *
 
-from .utils import flip_sign
+from .utils import flip_sign, is_negated
 from .unify import unify, substitute
 
 class ProofState():
@@ -32,22 +32,21 @@ class ProofState():
         # Find loop in parents
         # Constraint Answer Set Programming Without Grounding - Appendix B
         curr_state = self.parent
+        negation_count = 0
         while curr_state is not None:
+            if is_negated(curr_state.goal):
+                negation_count += 1
             # Found a loop
-            if goal == curr_state.goal:
-                # FIXME strictly, return of unify() (bindings) should only contain var-var mapping
+            if unify(goal, curr_state.goal):
                 loop_found = True
-                positive_loop = True
                 break
-            elif goal == flip_sign(curr_state.goal):
-                # FIXME strictly, return of unify() (bindings) should only contain var-var mapping
+            elif unify(goal, flip_sign(curr_state.goal)):
                 loop_found = True
-                positive_loop = False
                 break
             curr_state = curr_state.parent
         # Return result
         if loop_found:
-            if positive_loop:
+            if negation_count > 0 and negation_count % 2 == 0:
                 return "success"
             else:
                 return "failure"

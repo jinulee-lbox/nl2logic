@@ -59,7 +59,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
     elif result_str == "failure": # 0 or odd>=1 negations
         # Goal clashes with other proved goal (coinduction failure)
         # print("Coinduction failure")
-        return
+        return []
     else: # result == "none"
         # Neither coinduction success or failure
         pass
