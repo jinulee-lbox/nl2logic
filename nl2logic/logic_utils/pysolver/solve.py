@@ -170,6 +170,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
                         substitute(curr_bodygoal, subset_state.bindings)
                     # Prove partially bound subgoals
                     new_state = ProofState(curr_bodygoal)
+                    new_state.parent = state
                     new_state_proofs = recursive_solve(new_state, rule_dict, proved_goal_table, unproved_callback)
 
                     # Extend subset (list of already proven goals) with fresh proved goal
