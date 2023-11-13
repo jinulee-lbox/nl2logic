@@ -191,11 +191,19 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                     "tree": tree
                 })
             else:
-                proofs.append({
-                    "conclusion": conc_symbol,
-                    "proved": 0,
-                    "tree": "ERROR: Neither positive/negative proof has succeeded"
-                })
+                tree, negproved = get_proof_tree_from_preprocessed_program(preprocessed_program, "#false", proved_goal_table)
+                flag_success = False
+                if negproved:
+                    tree = str(tree)
+                    # HTML specific formatting
+                    if output_style == "html":
+                        tree = tree.replace("\n", " <br>")
+                        tree = tree.replace(" ", "&nbsp;")
+                    proofs.append({
+                        "conclusion": conc_symbol,
+                        "proved": 0,
+                        "tree": tree
+                    })
 
     return {
         "satisfactory": "Satisfied" if flag_success else "Unsatisfied",
