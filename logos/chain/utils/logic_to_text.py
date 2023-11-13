@@ -28,11 +28,28 @@ def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
     # Literal -> remove signs (-, not) and extract inner literal
     if term.ast_type == ASTType.Literal:
         is_not = term.sign == Sign.Negation
+        is_boolconst_true = (
+            term.atom.ast_type == ASTType.BooleanConstant and
+            term.atom.value
+        )
+        is_boolconst_false = (
+            term.atom.ast_type == ASTType.BooleanConstant and
+            not term.atom.value
+        )
+        is_comparison = term.atom.ast_type == ASTType.Comparison
+        is_symbolicatom = term.atom.ast_type == ASTType.SymbolicAtom
         is_classicneg = (
             term.atom.ast_type == ASTType.SymbolicAtom and
             term.atom.symbol.ast_type == ASTType.UnaryOperation and
             term.atom.symbol.operator_type == UnaryOperator.Minus
         )
+        if is_boolconst_true:
+            return ""
+        elif is_boolconst_false:
+            return "동시에 성립할 수 없다." # in ordinary cases, boolconst_false only appears in the constraint head position.
+        elif is_comparison:
+            return str(term)
+ 
         if is_not and is_classicneg:
             core = term.atom.symbol.argument
             tail = "이 아님을 증명할 수 없다."
