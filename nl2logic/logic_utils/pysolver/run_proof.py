@@ -19,8 +19,6 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
 
     # Parse and merge trees
     if len(proofs) > 0:
-        for p in proofs:
-            print(p)
         tree = JustificationTree(proofs)
         proved=True
     else:
