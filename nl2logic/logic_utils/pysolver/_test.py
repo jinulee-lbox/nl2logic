@@ -1,4 +1,5 @@
-from .parse import parse_program, parse_line
+from .parse import parse_program
+from .utils import parse_line
 from .solve import solve
 from .preprocess import preprocess
 from .justification_tree import JustificationTree

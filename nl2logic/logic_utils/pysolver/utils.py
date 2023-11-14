@@ -122,3 +122,29 @@ def flip_sign(ast):
 
 def anonymize_vars(goal_str):
     return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", goal_str) # Remove variables
+
+def parse_line(goal: str):
+    _temp = []
+    parse_string(goal, callback=_temp.append)
+    goal: AST = _temp[1]
+    return goal
+
+class RenameVariableState:
+    def __init__(self):
+        self._idx = 0
+    
+    def idx(self):
+        temp = self._idx
+        self._idx += 1
+        return temp
+
+def rename_variables(rule: AST, rename_var_state: RenameVariableState) -> AST:
+    rule_str = str(rule)
+    rule_str = re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", f"\g<1>\g<2>_{rename_var_state.idx()}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
+    anonym_idx = 0
+    while True:
+        rule_str, replaced = re.subn(r"([,( ])_(?=[,)]| [+\-*/%><=!])", f"\g<1>_Anon_{rename_var_state.idx()}_{anonym_idx}", rule_str, count=1)
+        if replaced == 0:
+            break
+        anonym_idx += 1
+    return parse_line(rule_str)

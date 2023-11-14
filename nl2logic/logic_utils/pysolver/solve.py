@@ -7,7 +7,7 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState
+from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState, rename_variables, RenameVariableState
 from .unify import unify, substitute
 from .proof_state import ProofState
 
@@ -30,11 +30,11 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, 
     
     # Depth-first search (with explicit state) for a vaild proof
     root = ProofState(deepcopy(goal))
-    result = recursive_solve(root, rule_dict, proved_goal_table, unproved_callback)
+    result = recursive_solve(root, rule_dict, proved_goal_table, unproved_callback, RenameVariableState())
     return result
 
 
-def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_goal_table: Dict[AST, List[ProofState]], unproved_callback = None) -> List[ProofState]:
+def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_goal_table: Dict[AST, List[ProofState]], unproved_callback = None, rename_var_state: RenameVariableState = None) -> List[ProofState]:
     # state: pointer to the current goal in the full proof
     goal = state.goal
     
@@ -109,7 +109,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
     if is_negated(goal):
         new_goal = deepcopy(state.goal)
         new_goal.sign = Sign.NoSign
-        new_proved_states = recursive_solve(ProofState(new_goal), rule_dict, proved_goal_table, unproved_callback)
+        new_proved_states = recursive_solve(ProofState(new_goal), rule_dict, proved_goal_table, unproved_callback, rename_var_state)
         if len(new_proved_states) >= 1:
             # TODO add callback for trace failure
             # print(goal, "failed because", new_goal, "is proved")
@@ -131,6 +131,9 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
     # apply rules recursively
     for rule in relevant_rules:
         # Check if goal unifies with rule head, and get variable mapping
+        rule = deepcopy(rule)
+        rule = rename_variables(rule, rename_var_state)
+
         bindings = unify(goal, rule.head)
         if bindings is None:
             continue # unification failure(rule head does not match current goal)
@@ -171,7 +174,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
                     # Prove partially bound subgoals
                     new_state = ProofState(curr_bodygoal)
                     new_state.parent = state
-                    new_state_proofs = recursive_solve(new_state, rule_dict, proved_goal_table, unproved_callback)
+                    new_state_proofs = recursive_solve(new_state, rule_dict, proved_goal_table, unproved_callback, rename_var_state)
 
                     # Extend subset (list of already proven goals) with fresh proved goal
                     for new_proof in new_state_proofs: # Each ProofStates contain single binding
@@ -217,5 +220,12 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
         elif state.proved and is_negated(state.goal) and not is_any_rule_unified:
             # `not x` is proved because `x` cannot be proved
             unproved_callback(flip_sign(state.goal), UnprovedGoalState.NOT_EXIST) # Although `not x` is considered as proved, need to check x
+        
+        # Since unproved_callback can modify rule_dict / proved_goal_table (by adding or removing rules)
+        # ex.
+        #   - rule_dict[head].append(rule)
+        #   - proved_goal_table.pop(goal)
+        # Re-call recursive_solve() with current goal
+        recursive_solve(state, rule_dict, proved_goal_table, unproved_callback, rename_var_state)
 
     return proved_states
