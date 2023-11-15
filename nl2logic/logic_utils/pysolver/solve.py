@@ -39,15 +39,15 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
     goal = state.goal
     
     ##### 1. Check cached goals #####
-    if goal in proved_goal_table: # At least one proof is found
-        cached_states = proved_goal_table[goal]
-        if cached_states is None: # if None -> it is certain that it is not proven
-            # print(f"found {goal} in table, cannot be proven")
-            return []
-        else:
-            # Goal has been proven more than once before
-            # print(f"found {goal} in table, with {len(proved_goal_table[goal])} proofs")
-            return proved_goal_table[goal]
+    # if goal in proved_goal_table: # At least one proof is found
+    #     cached_states = proved_goal_table[goal]
+    #     if cached_states is None: # if None -> it is certain that it is not proven
+    #         # print(f"found {goal} in table, cannot be proven")
+    #         return []
+    #     else:
+    #         # Goal has been proven more than once before
+    #         # print(f"found {goal} in table, with {len(proved_goal_table[goal])} proofs")
+    #         return proved_goal_table[goal]
 
     ##### 2. Check coinduction (loop in proofs) #####
     result_str = state.detect_loop()
@@ -143,6 +143,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
         # State base to proof
         state = deepcopy(original_state)
         substitute(state.goal, bindings)
+        state.rule = rule
 
         # Add binding information created by rules
         if len(rule.body) == 0:
@@ -212,20 +213,24 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
 
     # Track unproved goals by callback
     if unproved_callback is not None:
+        call_parent = False
         if not state.proved:
             if not is_any_rule_unified:
-                unproved_callback(state.goal, UnprovedGoalState.UNPROVED_YET) # No rules that unify with a positive goal
+                call_parent = unproved_callback(state, UnprovedGoalState.UNPROVED_YET) # No rules that unify with a positive goal
             else:
-                unproved_callback(state.goal, UnprovedGoalState.BACKTRACK) # Despite rules exist, 
+                call_parent = unproved_callback(state, UnprovedGoalState.BACKTRACK) # Despite rules exist, 
         elif state.proved and is_negated(state.goal) and not is_any_rule_unified:
             # `not x` is proved because `x` cannot be proved
-            unproved_callback(flip_sign(state.goal), UnprovedGoalState.NOT_EXIST) # Although `not x` is considered as proved, need to check x
+            flipped_state = deepcopy(state)
+            flipped_state.goal = flip_sign(flipped_state.goal)
+            call_parent = unproved_callback(flipped_state, UnprovedGoalState.NOT_EXIST) # Although `not x` is considered as proved, need to check x
         
         # Since unproved_callback can modify rule_dict / proved_goal_table (by adding or removing rules)
         # ex.
         #   - rule_dict[head].append(rule)
         #   - proved_goal_table.pop(goal)
         # Re-call recursive_solve() with current goal
-        recursive_solve(state, rule_dict, proved_goal_table, unproved_callback, rename_var_state)
+        if call_parent:
+            proved_states = recursive_solve(state, rule_dict, proved_goal_table, unproved_callback, rename_var_state)
 
     return proved_states
