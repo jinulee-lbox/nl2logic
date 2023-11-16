@@ -70,7 +70,16 @@ def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
     
     if term.ast_type == ASTType.Function:
         fn_name = term.name
-        data = [x for x in const_info if x["const"] == fn_name][0] # Extract const information
+        try:
+            data = [x for x in const_info if x["const"] == fn_name][0] # Extract const information
+        except IndexError: # Customly defined constants (related to exclude_underscore = True in asp_extract_const_list())
+            arity = len(term.arguments)
+            if arity > 0:
+                description = ", ".join([f'%{i}'for i in range(arity)])
+                description += f"는 {fn_name} 을 만족한다."
+            else:
+                description += f"{fn_name} 이다."
+            data = {"description": description}
         arguments = [_recursive_rule_to_text_conversion(x, const_info) for x in term.arguments]
         frame = data["description"]
         for i in range(len(arguments)):

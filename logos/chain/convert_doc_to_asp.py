@@ -17,7 +17,7 @@ from nl2logic.config import nl2logic_config as config
 get_key = lambda x: anonymize_vars(str(x[0])) if isinstance(x, tuple) else anonymize_vars(str(x))
 
 
-def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], proved_goal_table: Dict[AST, list], program: List[dict], body_text: str, few_shot_n: int=8, retry_count: int=3):
+def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], program: List[dict], body_text: str, few_shot_n: int=8, retry_count: int=3):
     visited = []
 
     def logos_add_new_rule(state, unproved_reason: UnprovedGoalState):
@@ -102,9 +102,6 @@ def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], proved_goal_
                             if get_hash_head(line) not in rule_table:
                                 rule_table[get_hash_head(line)] = []
                             rule_table[get_hash_head(line)].append(line)
-
-                        proved_goal_table.pop(curr_goal, None)
-                        proved_goal_table.pop(flip_sign(curr_goal), None)
                         
                         proved = True # end the loop
                     else:
@@ -166,15 +163,12 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
 
         rule_table, _ = parse_program(preprocessed_program)
         goal = parse_line(goal).head
-        proved_goal_table = dict()
         program = []
 
         proofs = solve(
             goal,
             rule_table,
-            proved_goal_table,
-            initial_call=False,
-            unproved_callback=logos_add_new_rule_function_factory(rule_table, proved_goal_table, program, body_text)
+            unproved_callback=logos_add_new_rule_function_factory(rule_table, program, body_text)
         )
         print(len(proofs), "proofs found")
         if len(proofs) > 0:

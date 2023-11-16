@@ -156,11 +156,10 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
     proofs = []
     flag_success = True
     logging.debug(preprocessed_program)
-    proved_goal_table = dict() # Cache for already proven goals
     for conc_symbol in conc_symbols:
         conc_symbol = str(conc_symbol)
         # logging.debug(conc_symbol)
-        tree, posproved = get_proof_tree_from_preprocessed_program(preprocessed_program, conc_symbol, proved_goal_table)
+        tree, posproved = get_proof_tree_from_preprocessed_program(preprocessed_program, conc_symbol)
         if posproved:
             tree = str(tree)
             # HTML specific formatting
@@ -177,7 +176,7 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                 new_conc_symbol = conc_symbol.replace("not ", "")
             else:
                 new_conc_symbol = "not " + conc_symbol
-            tree, negproved = get_proof_tree_from_preprocessed_program(preprocessed_program, new_conc_symbol, proved_goal_table)
+            tree, negproved = get_proof_tree_from_preprocessed_program(preprocessed_program, new_conc_symbol)
             flag_success = False
             if negproved:
                 tree = str(tree)
@@ -191,7 +190,7 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                     "tree": tree
                 })
             else:
-                tree, negproved = get_proof_tree_from_preprocessed_program(preprocessed_program, "#false", proved_goal_table)
+                tree, negproved = get_proof_tree_from_preprocessed_program(preprocessed_program, "#false")
                 flag_success = False
                 if negproved:
                     tree = str(tree)

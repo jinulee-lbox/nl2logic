@@ -11,45 +11,32 @@ from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoal
 from .unify import unify, substitute
 from .proof_state import ProofState
 
-def consistency_check(rule_dict, proved_goal_table):
+def consistency_check(rule_dict):
     if "#false" not in rule_dict:
         return True
     false_lit = rule_dict["#false"][0].head # retrieve literal `#false`
-    if solve(false_lit, rule_dict, initial_call=False, proved_goal_table=proved_goal_table):
+    if solve(false_lit, rule_dict):
         return False
     return True
 
-def solve(goal: AST, rule_dict: Dict[str, List[AST]], proved_goal_table = None, initial_call=True, unproved_callback=None) -> List[ProofState]:
+def solve(goal: AST, rule_dict: Dict[str, List[AST]], unproved_callback=None) -> List[ProofState]:
     # print(f"Start proof for {goal}")
-    if proved_goal_table is None:
-        proved_goal_table = dict()
 
     # Consistency check
-    if initial_call and not consistency_check(rule_dict, proved_goal_table):
+    if not consistency_check(rule_dict):
         return []
     
     # Depth-first search (with explicit state) for a vaild proof
     root = ProofState(deepcopy(goal))
-    result = recursive_solve(root, rule_dict, proved_goal_table, unproved_callback, RenameVariableState())
+    result = recursive_solve(root, rule_dict, unproved_callback, RenameVariableState())
     return result
 
 
-def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_goal_table: Dict[AST, List[ProofState]], unproved_callback = None, rename_var_state: RenameVariableState = None) -> List[ProofState]:
+def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], unproved_callback = None, rename_var_state: RenameVariableState = None) -> List[ProofState]:
     # state: pointer to the current goal in the full proof
     goal = state.goal
-    
-    ##### 1. Check cached goals #####
-    # if goal in proved_goal_table: # At least one proof is found
-    #     cached_states = proved_goal_table[goal]
-    #     if cached_states is None: # if None -> it is certain that it is not proven
-    #         # print(f"found {goal} in table, cannot be proven")
-    #         return []
-    #     else:
-    #         # Goal has been proven more than once before
-    #         # print(f"found {goal} in table, with {len(proved_goal_table[goal])} proofs")
-    #         return proved_goal_table[goal]
 
-    ##### 2. Check coinduction (loop in proofs) #####
+    ##### 1. Check coinduction (loop in proofs) #####
     result_str = state.detect_loop()
     if result_str == "success": # even>=2 negation
         # Goal is grounded & already proved in state (coinduction success)
@@ -64,7 +51,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
         # Neither coinduction success or failure
         pass
 
-    ##### 3. Check coinduction (loop in proofs) #####
+    ##### 2. Check coinduction (loop in proofs) #####
     if goal.atom.ast_type == ASTType.Comparison:
         if not is_ground(goal):
             # Comparison goal not grounded -> fail to prove anything
@@ -105,11 +92,11 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
                     return [state]
         # Comparison clear!!
 
-    ##### 4. Check classic negation (not x) #####
+    ##### 3. Check classic negation (not x) #####
     if is_negated(goal):
         new_goal = deepcopy(state.goal)
         new_goal.sign = Sign.NoSign
-        new_proved_states = recursive_solve(ProofState(new_goal), rule_dict, proved_goal_table, unproved_callback, rename_var_state)
+        new_proved_states = recursive_solve(ProofState(new_goal), rule_dict, unproved_callback, rename_var_state)
         if len(new_proved_states) >= 1:
             # TODO add callback for trace failure
             # print(goal, "failed because", new_goal, "is proved")
@@ -118,7 +105,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
             # print(goal, "suceeded because", new_goal, "cannot be proved")
             pass
 
-    ##### 5. Check rules and facts #####
+    ##### 4. Check rules and facts #####
     
     proved_states = [] # result list
 
@@ -175,7 +162,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
                     # Prove partially bound subgoals
                     new_state = ProofState(curr_bodygoal)
                     new_state.parent = state
-                    new_state_proofs = recursive_solve(new_state, rule_dict, proved_goal_table, unproved_callback, rename_var_state)
+                    new_state_proofs = recursive_solve(new_state, rule_dict, unproved_callback, rename_var_state)
 
                     # Extend subset (list of already proven goals) with fresh proved goal
                     for new_proof in new_state_proofs: # Each ProofStates contain single binding
@@ -203,13 +190,7 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
         state.proved = True
         proved_states.append(state)
 
-    ##### 6. Post-tasks: add to cache, failure callback #####
-
-    # Cache update
-    if state.proved:
-        proved_goal_table[goal] = proved_states
-    else:
-        proved_goal_table[goal] = None
+    ##### 5. Post-tasks: add to cache, failure callback #####
 
     # Track unproved goals by callback
     if unproved_callback is not None:
@@ -225,12 +206,11 @@ def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], proved_g
             flipped_state.goal = flip_sign(flipped_state.goal)
             call_parent = unproved_callback(flipped_state, UnprovedGoalState.NOT_EXIST) # Although `not x` is considered as proved, need to check x
         
-        # Since unproved_callback can modify rule_dict / proved_goal_table (by adding or removing rules)
+        # Since unproved_callback can modify global state (rule_dict, replacy consistency check, ...)
         # ex.
         #   - rule_dict[head].append(rule)
-        #   - proved_goal_table.pop(goal)
         # Re-call recursive_solve() with current goal
         if call_parent:
-            proved_states = recursive_solve(state, rule_dict, proved_goal_table, unproved_callback, rename_var_state)
+            proved_states = recursive_solve(state, rule_dict, unproved_callback, rename_var_state)
 
     return proved_states
