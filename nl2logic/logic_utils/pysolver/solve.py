@@ -14,8 +14,8 @@ from .proof_state import ProofState
 def consistency_check(rule_dict):
     if "#false" not in rule_dict:
         return True
-    false_lit = rule_dict["#false"][0].head # retrieve literal `#false`
-    if solve(false_lit, rule_dict):
+    false_lit = deepcopy(rule_dict["#false"][0].head) # retrieve literal `#false`
+    if recursive_solve(ProofState(false_lit), rule_dict):
         return False
     return True
 
@@ -28,11 +28,11 @@ def solve(goal: AST, rule_dict: Dict[str, List[AST]], unproved_callback=None) ->
     
     # Depth-first search (with explicit state) for a vaild proof
     root = ProofState(deepcopy(goal))
-    result = recursive_solve(root, rule_dict, unproved_callback, RenameVariableState())
+    result = recursive_solve(root, rule_dict, unproved_callback)
     return result
 
 
-def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], unproved_callback = None, rename_var_state: RenameVariableState = None) -> List[ProofState]:
+def recursive_solve(state: ProofState, rule_dict: Dict[str, List[AST]], unproved_callback = None, rename_var_state: RenameVariableState = RenameVariableState()) -> List[ProofState]:
     # state: pointer to the current goal in the full proof
     goal = state.goal
 

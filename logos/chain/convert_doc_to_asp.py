@@ -170,9 +170,9 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
             rule_table,
             unproved_callback=logos_add_new_rule_function_factory(rule_table, program, body_text)
         )
-        print(len(proofs), "proofs found")
+        logging.info(len(proofs), "proofs found")
         if len(proofs) > 0:
-            print(proofs[0])
+            logging.info(proofs[0])
                 
         # Generate proof for goals
         # proof, proved = get_proof_tree_from_preprocessed_program(preprocessed_program, goal, dict())
