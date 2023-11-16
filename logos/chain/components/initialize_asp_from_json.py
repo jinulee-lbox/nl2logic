@@ -1,6 +1,7 @@
 import json
 import re
 from nl2logic.database_utils.queries import db_get_asp_body_from_law_id
+from nl2logic.logic_utils.pysolver.utils import parse_line
 
 def get_skip_words(law_id, body_text):
     skip_words = []
@@ -78,5 +79,7 @@ def get_initial_program(doc):
 
 def get_goals(doc):
     results = []
-    results.append(f"{doc['verdict']}(defendant(\"A\"), crime(\"{doc['law_id']}\"),_).")
+    results.append(
+        parse_line(f"{doc['verdict']}(defendant(\"A\"), crime(\"{doc['law_id']}\"),_).").head
+    )
     return results

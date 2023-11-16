@@ -3,20 +3,18 @@ from typing import *
 from .parse import parse_program
 from .utils import parse_line
 from .solve import solve
+from .proof_state import ProofContext
 from .justification_tree import *
 import logging
 
-def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_symbol: str) -> Tuple[JustificationTree, bool]:
-    logging.debug(f"?- {conc_symbol}.")
-    # print(preprocessed_program)
+def get_proof_tree(program: List[Dict[str, Any]], goal: AST) -> JustificationTree:
+    logging.debug(f"?- {str(goal)}.")
 
-    rule_table, _ = parse_program(preprocessed_program)
-    goal = parse_line(conc_symbol).head
-    # profiler = Profiler()
-    # profiler.start()
-    proofs = solve(goal, rule_table)
-    # profiler.stop()
-    # profiler.print()
+    context = ProofContext()
+    for line in program:
+        context.add_rule(line)
+
+    proofs = solve(goal, context)
 
     # Parse and merge trees
     if len(proofs) > 0:
@@ -25,11 +23,11 @@ def get_proof_tree_from_preprocessed_program(preprocessed_program: str, conc_sym
     else:
         proved=False
         tree = None
-        # print([str(x) for x in get_unproved_goals_from_preprocessed_program(preprocessed_program, conc_symbol, dict())])
+        # print([str(x) for x in get_unproved_goals(preprocessed_program, conc_symbol, dict())])
     return tree, proved
 
 
-def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc_symbol: str) -> List[AST]:
+def get_unproved_goals(preprocessed_program: str, conc_symbol: str) -> List[AST]:
     logging.debug(f"?- {conc_symbol}.")
     result = []
     # print(preprocessed_program)
@@ -37,7 +35,7 @@ def get_unproved_goals_from_preprocessed_program(preprocessed_program: str, conc
     rule_table, _ = parse_program(preprocessed_program)
     goal = parse_line(conc_symbol).head
 
-    proofs = solve(goal, rule_table, initial_call=False, unproved_callback=lambda x,y : result.append((x, y)))
+    proofs = solve(goal, rule_table, unproved_callback=lambda x,y : result.append((x, y)))
     return result
 
 if __name__ == "__main__":
@@ -54,7 +52,7 @@ b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
 z(k).
 """
-    result, _ = get_proof_tree_from_preprocessed_program(program, "not fin(_).", {})
+    result = get_proof_tree(program, "not fin(_).", {})
     print(result)
-    # result = get_unproved_goals_from_preprocessed_program(program, "not fin(_).", {})
+    # result = get_unproved_goals(program, "not fin(_).", {})
     # print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])

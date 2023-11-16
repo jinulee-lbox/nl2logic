@@ -1,9 +1,81 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 from copy import deepcopy, copy
+import re
 from clingo.ast import *
 
-from .utils import flip_sign, is_negated
+from .utils import flip_sign, is_negated, get_hash_head, parse_line
 from .unify import unify, substitute
+from .preprocess import preprocess
+
+class ProofContext():
+    def __init__(self):
+        """A global context manager that runs through a proof.
+        Stores current rules, variable re-indexing information, and more.
+
+        Program contains a dictionary (JSON-compatible) of rules.
+        Mandatory keys:
+        - `asp` : contains a string version of the logic program.
+
+        ex. [{'asp': 'a :- b, c(X).', 'comment': 'if b holds and c holds for any X, a holds.'}]
+        """
+        self.program: List[Dict[str, Any]] = []
+        # Preprocess programs (add dual, split OR statements,...)
+        self.preprocessed_program: List[AST] = []
+        
+        # Hashed dictionary for fast retrieval of rules
+        self.rule_dict: Dict[str, List[AST]] = {}
+
+        # Global index for rule instantiation.
+        self.variable_index: int = 0
+
+    def add_rule(self, line: Dict[str, Any]) -> None:
+        self.program.append(line)
+        
+        # Parse string to AST
+        rule = parse_line(line["asp"])
+        assert "asp" in line
+        
+        # Add to preprocessed program list
+        self.preprocessed_program.extend(preprocess(rule))
+        
+        # Add to rule dict (for fast finding)
+        hash_head = get_hash_head(rule)
+        if hash_head not in self.rule_dict:
+            self.rule_dict[hash_head] = []
+        
+        # Check for duplicates
+        is_dup = False
+        # FIXME
+        # for existing_rule in self.rule_dict[hash_head]:
+        #     if unify(rule, existing_rule):
+        #         is_dup = True
+        if not is_dup:
+            self.rule_dict[hash_head].append(rule)
+
+    def find_rule(self, goal: AST):
+        hash_head = get_hash_head(goal)
+        if hash_head not in self.rule_dict:
+            return []
+        relevant_rules = self.rule_dict[hash_head]
+        result = []
+        for rule in relevant_rules:
+            head = rule.head
+            if unify(head, goal) is not None:
+                result.append(deepcopy(rule))
+        return result
+
+    def reindex_variables(self, rule):
+        rule_str = str(rule)
+        # Re-index
+        rule_str = re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", f"\g<1>\g<2>_{self.variable_index}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
+        anonym_idx = 0
+        while True:
+            rule_str, replaced = re.subn(r"([,( ])_(?=[,)]| [+\-*/%><=!])", f"\g<1>_Anon_{self.variable_index}_{anonym_idx}", rule_str, count=1)
+            if replaced == 0:
+                break
+            anonym_idx += 1
+        self.variable_index += 1
+        return parse_line(rule_str)
 
 class ProofState():
     def __init__(self, goal: AST):

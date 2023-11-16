@@ -10,6 +10,7 @@ from nl2logic.logic_utils.pysolver.preprocess import preprocess
 from nl2logic.logic_utils.pysolver.utils import unproved_goal_state_to_str, anonymize_vars, UnprovedGoalState
 from nl2logic.logic_utils.pysolver.solve import solve
 from nl2logic.logic_utils.pysolver.unify import unify
+from nl2logic.logic_utils.pysolver.proof_state import ProofContext
 from nl2logic.logic_utils.api import asp_extract_const_list
 # from nl2logic.graphviz_utils import justification_tree_to_graphviz, graphviz_to_png
 from nl2logic.config import nl2logic_config as config
@@ -17,7 +18,7 @@ from nl2logic.config import nl2logic_config as config
 get_key = lambda x: anonymize_vars(str(x[0])) if isinstance(x, tuple) else anonymize_vars(str(x))
 
 
-def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], program: List[dict], body_text: str, few_shot_n: int=8, retry_count: int=3):
+def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, few_shot_n: int=8, retry_count: int=3):
     visited = []
 
     def logos_add_new_rule(state, unproved_reason: UnprovedGoalState):
@@ -36,16 +37,9 @@ def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], program: Lis
         logging.info("=======================")
         logging.info(f"Proving: {curr_goal_str}")
         
-        # Retrieve examples from DB
+        # Retrieve examples from DB : TODO refactor this part
         rule_examples = []
-        raw_rule_examples = find_head_matching_examples(curr_goal)
-        for rule_example in raw_rule_examples:
-            # if rule_example["source"] in ["commonsense"] and rule_example["asp"] not in commonsense_check:
-            #     # Commonsesne statements can apply to all documents
-            #     commonsense_asps.append(rule_example)
-            #     commonsense_check.add(rule_example["asp"])
-            # else:
-                rule_examples.append(rule_example)
+        rule_examples.extend(find_head_matching_examples(curr_goal))
         if len(rule_examples) < few_shot_n:
             # Add random examples to match few_shot_n
             # rule_examples = find_random_examples(max_n=few_shot_n-len(rule_examples)) + rule_examples
@@ -89,19 +83,10 @@ def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], program: Lis
                     asp["comment"] = get_rationale_from_asp(parse_line(asp["asp"]))
                     logging.info(json.dumps(asp, indent=4, ensure_ascii=False))
                     if asp["source"] in ["commonsense"] or validate_rationale_from_doc(asp["comment"], body_text):
-                        logging.info("=> Proved.")
                         # Validation complete
-                        program.append(asp)
-
+                        logging.info("=> Proved.")
                         # Update stack by adding new goals / remove unproved goals
-                        preprocessed_program = preprocess(asp["asp"])
-                        for line in preprocessed_program.split("\n"): # First line is commented out by default
-                            if line.startswith("% ") or len(line.strip()) == 0:
-                                continue
-                            line = parse_line(line)
-                            if get_hash_head(line) not in rule_table:
-                                rule_table[get_hash_head(line)] = []
-                            rule_table[get_hash_head(line)].append(line)
+                        context.add_rule(asp)
                         
                         proved = True # end the loop
                     else:
@@ -119,11 +104,11 @@ def logos_add_new_rule_function_factory(rule_table: Dict[str, AST], program: Lis
         
             # if graph_output_path is not None:
             #     # Generate proof for goals
-            #     proof, proved = get_proof_tree_from_preprocessed_program(preprocessed_program, goal, dict())
-            #     if proved:
+            #     proof = get_proof_tree(preprocessed_program, goal, dict())
+            #     if proof:
             #         viz_tree = justification_tree_to_graphviz(proof)
             #     else:
-            #         antiproof, _ = get_proof_tree_from_preprocessed_program(preprocessed_program, 'not ' + goal, dict())
+            #         antiproof = get_proof_tree(preprocessed_program, 'not ' + goal, dict())
             #         viz_tree = justification_tree_to_graphviz(antiproof)
             #     graphviz_to_png(viz_tree, graph_output_path + "/" + str(iter_count) + ".svg")
         return True # call recursove_solve for current goal again
@@ -143,43 +128,32 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
     program = get_initial_program(doc)
     raw_program = [x["asp"] for x in program]
     print("\n".join(raw_program))
-    # END DEBUG
-    preprocessed_program = "\n".join([preprocess(line) for line in raw_program]) + "\n"
-
     # Parse goals
     goals = get_goals(doc)
-
-    # Retrieve information from config
-
-    # Named entity recognition
-    # frame = get_frame_instance("operateVehicle", body_text)
-    # exit()
-    # entities = get_named_entity_recognition(body_text)
-    # print(entities)
-
+    # Loop through goals to prove
     for goal in goals:
         logging.info(f"?- {goal}.")
         # print(preprocessed_program)
 
-        rule_table, _ = parse_program(preprocessed_program)
-        goal = parse_line(goal).head
-        program = []
+        context = ProofContext()
+        for line in program:
+            context.add_rule(line)
 
         proofs = solve(
             goal,
-            rule_table,
-            unproved_callback=logos_add_new_rule_function_factory(rule_table, program, body_text)
+            context,
+            unproved_callback=logos_add_new_rule_function_factory(context, body_text)
         )
         logging.info(len(proofs), "proofs found")
         if len(proofs) > 0:
             logging.info(proofs[0])
                 
         # Generate proof for goals
-        # proof, proved = get_proof_tree_from_preprocessed_program(preprocessed_program, goal, dict())
+        # proof, proved = get_proof_tree(preprocessed_program, goal, dict())
         # if proved:
         #     result_trees.append(proof)
         # else:
-        #     antiproof, _ = get_proof_tree_from_preprocessed_program(preprocessed_program, 'not ' + goal, dict())
+        #     antiproof, _ = get_proof_tree(preprocessed_program, 'not ' + goal, dict())
         #     result_trees.append(antiproof)
     # return result_trees, program
     return None, program

@@ -218,46 +218,41 @@ def translate_numeric_string(rule:AST) -> AST:
                 guard.term = convert_num_str(guard.term)
     return rule
 
-def preprocess(term_str):
-    """Translate s(CASP) format with...
+def preprocess(rule: AST) -> List[AST]:
+    """Translate raw rule statement to preprocessed rule by...
     - Unpack OR statement aggregates
     - Unpack pooling
+    - Convert numeric strings that share dimensions to integer
+    - Add dual statements
 
     Args:
-        term_str (str): String to parse. Might raise syntax error if parsing is failed
-
-    Raises:
-        ValueError: _description_
-        ValueError: _description_
+        rule (AST): String to parse. Might raise syntax error if parsing is failed
 
     Returns:
-        str: String file including expanded ruleset.
+        List[AST]: _description_
     """
-    term_temp = []
-    parse_string(term_str, term_temp.append)
-    term = term_temp[1]
 
-    new_rules = ""
+    new_rules = []
 
-    if term.ast_type == ASTType.Rule:
-        unpacked_count_terms = unpack_count_aggregates(term)
+    if rule.ast_type == ASTType.Rule:
+        unpacked_count_rules = unpack_count_aggregates(rule)
         
-        unpooled_terms = []
-        for term in unpacked_count_terms:
-            unpooled_terms.extend(term.unpool())
+        unpooled_rules = []
+        for rule in unpacked_count_rules:
+            unpooled_rules.extend(rule.unpool())
 
-        for t3 in unpooled_terms:
+        for t3 in unpooled_rules:
             t3 = translate_numeric_string(t3)
-            new_rules += str(t3) + "\n"
+            new_rules.append(t3)
 
             # Dual statements
             for dual in get_dual(t3):
-                new_rules += str(dual) + r" % dual" + "\n"
+                new_rules.append(dual)
             # not pred :- -pred DISABLED TO PREVENT INFINITE LOOPS
             for explicit_dual in get_explicit_dual(t3):
-                new_rules += str(explicit_dual) + r" % dual" + "\n"
+                new_rules.append(explicit_dual)
             # :- a, -a
             for constraint in get_constraints(t3):
-                new_rules += str(constraint) + "\n"
+                new_rules.append(constraint)
 
-    return "% " + str(term) + "\n" + new_rules
+    return new_rules
