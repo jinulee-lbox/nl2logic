@@ -19,12 +19,10 @@ def get_proof_tree(program: List[Dict[str, Any]], goal: AST) -> JustificationTre
     # Parse and merge trees
     if len(proofs) > 0:
         tree = JustificationTree(proofs)
-        proved=True
     else:
-        proved=False
         tree = None
         # print([str(x) for x in get_unproved_goals(preprocessed_program, conc_symbol, dict())])
-    return tree, proved
+    return tree
 
 
 def get_unproved_goals(preprocessed_program: str, conc_symbol: str) -> List[AST]:
@@ -52,7 +50,7 @@ b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
 z(k).
 """
-    result = get_proof_tree(program, "not fin(_).", {})
+    result = get_proof_tree(program, parse_line("not fin(_).").head)
     print(result)
     # result = get_unproved_goals(program, "not fin(_).", {})
     # print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])

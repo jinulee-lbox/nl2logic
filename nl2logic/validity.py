@@ -6,7 +6,10 @@ from .utils import *
 def validity_check(data, mode):
     assert mode in ['case', 'law']
 
-    program = [asp_reformat_str(term['asp'], skip_if_fail=True) for term in data['terms']]
+    program = [{
+        'asp': asp_reformat_str(term['asp'], skip_if_fail=True),
+        'comment': term['comment']
+    } for term in data['terms']]
     if mode == 'case':
         conclusions = [asp_reformat_str(conc['asp'], skip_if_fail=True) for conc in data['concs']]
 
@@ -91,7 +94,7 @@ def validity_check(data, mode):
     missing_ontology_total = []
     for pgm, success in zip(program, prgm_success):
         try:
-            const_list = asp_extract_const_list(pgm, exclude_underscore=True)
+            const_list = asp_extract_const_list(pgm["asp"], exclude_underscore=True)
             missing_ontology = db_find_missing_ontology(const_list)
             if len(missing_ontology) > 0 and success['code'] == 0:
                 success['code'] = 11 # missing ontology
@@ -106,7 +109,7 @@ def validity_check(data, mode):
         validity_msg.append(f"온톨로지 DB에 등록되지 않은 단어: [{', '.join(missing_ontology_total)}]")
 
     # 5) Run ASP
-    asp_result = asp_run(preprocessed_program, conc_symbols)
+    asp_result = asp_run(program, conc_symbols)
     # check validity
     if mode == "case":
         all_conc_proved = True

@@ -153,7 +153,7 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
         # if proved:
         #     result_trees.append(proof)
         # else:
-        #     antiproof, _ = get_proof_tree(preprocessed_program, 'not ' + goal, dict())
+        #     antiproof = get_proof_tree(preprocessed_program, 'not ' + goal, dict())
         #     result_trees.append(antiproof)
     # return result_trees, program
     return None, program

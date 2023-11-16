@@ -7,15 +7,16 @@ from clingo.symbol import *
 from clingo.solving import *
 
 from .pysolver.preprocess import preprocess
+from .pysolver.utils import parse_line
 from .pysolver import get_proof_tree
 
 def asp_parse_program(terms: List[str]):
     success = []
-    parsed_program = ""
+    parsed_program = []
     for term in terms:
-        # # Parsing.
+        # Parsing.
         try:
-            parsed_program += preprocess(term) # Unpack pooling and #count aggregates, negated heads to constraints, ...
+            parsed_program.extend(preprocess(parse_line(term['asp']))) # Unpack pooling and #count aggregates, negated heads to constraints, ...
         except Exception as e:
             success.append({
                 'code': 10,
@@ -67,9 +68,7 @@ def asp_parse_conclusion(conclusions: List[str]):
         try:
             # buf = []
             # conc_symbols.append(parse_term(conc, logger=_intercept_message(buf)))
-            result = []
-            parse_string(conc + ".", result.append)
-            conc = result[1]
+            conc = parse_line(conc + ".").head
             conc_symbols.append(conc)
             success.append({
                 'code': 0,
@@ -151,15 +150,12 @@ def asp_extract_pred_arg_list(term: str, exclude_underscore:bool = True):
     #     return []
     return pred_arg_list
 
-def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style="html"):
-    # Generate tempfile
+def asp_run(program: List[Dict[str, Any]], conc_symbols: List[AST], output_style="html"):
     proofs = []
     flag_success = True
-    logging.debug(preprocessed_program)
     for conc_symbol in conc_symbols:
-        conc_symbol = str(conc_symbol)
         # logging.debug(conc_symbol)
-        tree = get_proof_tree(preprocessed_program, conc_symbol)
+        tree = get_proof_tree(program, conc_symbol)
         if tree:
             tree = str(tree)
             # HTML specific formatting
@@ -167,7 +163,7 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                 tree = tree.replace("\n", " <br>")
                 tree = tree.replace(" ", "&nbsp;")
             proofs.append({
-                "conclusion": conc_symbol,
+                "conclusion": str(conc_symbol),
                 "proved": 1,
                 "tree": tree
             })
@@ -176,7 +172,7 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                 new_conc_symbol = conc_symbol.replace("not ", "")
             else:
                 new_conc_symbol = "not " + conc_symbol
-            tree = get_proof_tree(preprocessed_program, new_conc_symbol)
+            tree = get_proof_tree(program, new_conc_symbol)
             flag_success = False
             if tree:
                 tree = str(tree)
@@ -185,12 +181,12 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                     tree = tree.replace("\n", " <br>")
                     tree = tree.replace(" ", "&nbsp;")
                 proofs.append({
-                    "conclusion": conc_symbol,
+                    "conclusion": str(conc_symbol),
                     "proved": 0,
                     "tree": tree
                 })
             else:
-                tree, = get_proof_tree(preprocessed_program, "#false")
+                tree = get_proof_tree(program, parse_line("#false.").head)
                 flag_success = False
                 if tree:
                     tree = str(tree)
@@ -199,7 +195,7 @@ def asp_run(preprocessed_program: str, conc_symbols: List[Symbol], output_style=
                         tree = tree.replace("\n", " <br>")
                         tree = tree.replace(" ", "&nbsp;")
                     proofs.append({
-                        "conclusion": conc_symbol,
+                        "conclusion": str(conc_symbol),
                         "proved": 0,
                         "tree": tree
                     })
