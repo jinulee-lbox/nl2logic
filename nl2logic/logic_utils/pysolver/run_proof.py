@@ -21,19 +21,20 @@ def get_proof_tree(program: List[Dict[str, Any]], goal: AST) -> JustificationTre
         tree = JustificationTree(proofs)
     else:
         tree = None
-        # print([str(x) for x in get_unproved_goals(preprocessed_program, conc_symbol, dict())])
+        # print([str(x) for x in get_unproved_goals(program, goal)])
     return tree
 
 
-def get_unproved_goals(preprocessed_program: str, conc_symbol: str) -> List[AST]:
-    logging.debug(f"?- {conc_symbol}.")
+def get_unproved_goals(program: List[Dict[str, Any]], goal: AST) -> List[AST]:
+    logging.debug(f"?- {str(goal)}.")
     result = []
     # print(preprocessed_program)
 
-    rule_table, _ = parse_program(preprocessed_program)
-    goal = parse_line(conc_symbol).head
+    context = ProofContext()
+    for line in program:
+        context.add_rule(line)
 
-    proofs = solve(goal, rule_table, unproved_callback=lambda x,y : result.append((x, y)))
+    proofs = solve(goal, context, unproved_callback=lambda x,y : result.append((x, y)))
     return result
 
 if __name__ == "__main__":
@@ -52,5 +53,5 @@ z(k).
 """
     result = get_proof_tree(program, parse_line("not fin(_).").head)
     print(result)
-    # result = get_unproved_goals(program, "not fin(_).", {})
+    # result = get_unproved_goals(program, parse_line("not fin(_).").head, {})
     # print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])
