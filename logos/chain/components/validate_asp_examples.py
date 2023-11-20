@@ -2,8 +2,8 @@ from typing import List
 
 from clingo.ast import AST, ASTType
 
-from nl2logic.logic_utils.pysolver.unify import find_bindings
-from nl2logic.logic_utils.pysolver.parse import parse_line
+from pysolver.unify import find_bindings
+from pysolver.parse import parse_line
 from nl2logic.logic_utils.api import asp_parse_program, asp_extract_const_list
 from nl2logic.database_utils.queries import db_find_missing_ontology
 

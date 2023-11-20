@@ -1,8 +1,8 @@
 from typing import List
 from pygraphviz import *
 
-from nl2logic.logic_utils.pysolver.justification_tree import JustificationTree, JustificationTreeNode
-from nl2logic.logic_utils.pysolver.utils import anonymize_vars, get_hash_head, parse_line
+from pysolver.justification_tree import JustificationTree, JustificationTreeNode
+from pysolver.utils import anonymize_vars, get_hash_head, parse_line
 from nl2logic.database_utils.queries import db_get_const_information
 
 colors = {

@@ -2,9 +2,9 @@ from random import shuffle
 
 from clingo.ast import AST
 
-from nl2logic.logic_utils.pysolver.parse import parse_line
-from nl2logic.logic_utils.pysolver.unify import find_bindings
-from nl2logic.logic_utils.pysolver.utils import get_hash_head, flip_sign
+from pysolver.parse import parse_line
+from pysolver.unify import find_bindings
+from pysolver.utils import get_hash_head, flip_sign
 
 from nl2logic.database_utils.queries import db_get_head_matching_terms, db_get_random_terms
 
