@@ -4,7 +4,7 @@ import re
 from clingo.ast import *
 
 from .utils import flip_sign, is_negated, get_hash_head, parse_line
-from .unify import unify, substitute
+from .unify import find_bindings, bind
 from .preprocess import preprocess
 
 class ProofContext():
@@ -47,7 +47,7 @@ class ProofContext():
         is_dup = False
         # FIXME
         # for existing_rule in self.rule_dict[hash_head]:
-        #     if unify(rule, existing_rule):
+        #     if find_bindings(rule, existing_rule):
         #         is_dup = True
         if not is_dup:
             self.rule_dict[hash_head].append(rule)
@@ -60,7 +60,7 @@ class ProofContext():
         result = []
         for rule in relevant_rules:
             head = rule.head
-            if unify(head, goal) is not None:
+            if find_bindings(head, goal) is not None:
                 result.append(deepcopy(rule))
         return result
 
@@ -109,10 +109,10 @@ class ProofState():
             if is_negated(curr_state.goal):
                 negation_count += 1
             # Found a loop
-            if unify(goal, curr_state.goal):
+            if find_bindings(goal, curr_state.goal):
                 loop_found = True
                 break
-            elif unify(goal, flip_sign(curr_state.goal)):
+            elif find_bindings(goal, flip_sign(curr_state.goal)):
                 loop_found = True
                 break
             curr_state = curr_state.parent
@@ -139,8 +139,8 @@ class ProofState():
         self.proved = True
 
         for p in proof:
-            substitute(self.goal, p.bindings)
-        self.bindings = unify(self.original_goal, self.goal)
+            bind(self.goal, p.bindings)
+        self.bindings = find_bindings(self.original_goal, self.goal)
         self.rule = rule
 
         # Co-link current state and subgoals

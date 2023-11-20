@@ -7,15 +7,15 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-def unify(ast1: AST, ast2: AST):
+def find_bindings(ast1: AST, ast2: AST):
     # Entry for _unify, actual recursive function
     # perform initial deepcopy
     ast1 = deepcopy(ast1)
     ast2 = deepcopy(ast2)
-    return _unify(ast1, ast2)
+    return _find_bindings(ast1, ast2)
 
 @lru_cache(maxsize=1024) # optimization
-def _unify(ast1: AST, ast2: AST):
+def _find_bindings(ast1: AST, ast2: AST):
     # Variable
     if ast1.ast_type == ast2.ast_type == ASTType.Variable:
         return {ast1.name: ast2} # FIXME??
@@ -27,7 +27,7 @@ def _unify(ast1: AST, ast2: AST):
     
     # SymbolicAtom
     elif ast1.ast_type == ast2.ast_type == ASTType.SymbolicAtom:
-        return _unify(ast1.symbol, ast2.symbol)
+        return _find_bindings(ast1.symbol, ast2.symbol)
 
     # SymbolicTerm
     elif ast1.ast_type == ast2.ast_type == ASTType.SymbolicTerm:
@@ -39,7 +39,7 @@ def _unify(ast1: AST, ast2: AST):
     # UnaryOperation
     elif ast1.ast_type == ast2.ast_type == ASTType.UnaryOperation:
         if ast1.operator_type == ast2.operator_type:
-            bindings = _unify(ast1.argument, ast2.argument)
+            bindings = _find_bindings(ast1.argument, ast2.argument)
             return bindings
         else:
             return None
@@ -49,12 +49,12 @@ def _unify(ast1: AST, ast2: AST):
         # Deepcopy because substitution is required for correct behavior
         ast1 = deepcopy(ast1); ast2 = deepcopy(ast2)
         if ast1.operator_type == ast2.operator_type:
-            bindings = _unify(ast1.left, ast2.left)
+            bindings = _find_bindings(ast1.left, ast2.left)
             if bindings is None:
                 return None
-            substitute(ast1, bindings)
-            substitute(ast2, bindings)
-            bindings.update(_unify(ast1.right, ast2.right))
+            bind(ast1, bindings)
+            bind(ast2, bindings)
+            bindings.update(_find_bindings(ast1.right, ast2.right))
             return bindings
         else:
             return None
@@ -68,12 +68,12 @@ def _unify(ast1: AST, ast2: AST):
             for i in range(len(ast1.arguments)):
                 arg1 = ast1.arguments[i]
                 arg2 = ast2.arguments[i]
-                args_binding = _unify(arg1, arg2)
+                args_binding = _find_bindings(arg1, arg2)
                 if args_binding is None:
                     # one of args do not unify
                     return None
-                substitute(ast1, dict(args_binding))
-                substitute(ast2, dict(args_binding))
+                bind(ast1, dict(args_binding))
+                bind(ast2, dict(args_binding))
                 bindings.update(args_binding)
             return bindings
         else:
@@ -83,7 +83,7 @@ def _unify(ast1: AST, ast2: AST):
     # Literal
     elif ast1.ast_type == ast2.ast_type == ASTType.Literal:
         if ast1.sign == ast2.sign and ast1.atom.ast_type == ast2.atom.ast_type:
-            return _unify(ast1.atom, ast2.atom)
+            return _find_bindings(ast1.atom, ast2.atom)
     # Boolean constant
     elif ast1.ast_type == ast2.ast_type == ASTType.BooleanConstant:
         if ast1.value == ast2.value:
@@ -95,7 +95,7 @@ def _unify(ast1: AST, ast2: AST):
 
     return None
 
-def substitute(input_ast, bindings: Dict[str, AST]):
+def bind(input_ast, bindings: Dict[str, AST]):
     # Explicit call stack maintaining for a bit of speedup
     if len(bindings) == 0:
         return input_ast

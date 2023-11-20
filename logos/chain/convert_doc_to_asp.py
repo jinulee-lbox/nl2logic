@@ -9,7 +9,7 @@ from nl2logic.logic_utils.pysolver.parse import parse_program
 from nl2logic.logic_utils.pysolver.preprocess import preprocess
 from nl2logic.logic_utils.pysolver.utils import unproved_goal_state_to_str, anonymize_vars, UnprovedGoalState
 from nl2logic.logic_utils.pysolver.solve import solve
-from nl2logic.logic_utils.pysolver.unify import unify
+from nl2logic.logic_utils.pysolver.unify import find_bindings
 from nl2logic.logic_utils.pysolver.proof_state import ProofContext
 from nl2logic.logic_utils.api import asp_extract_const_list
 # from nl2logic.graphviz_utils import justification_tree_to_graphviz, graphviz_to_png
@@ -26,7 +26,7 @@ def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, f
 
         # Check visited
         for visited_goal in visited:
-            if unify(curr_goal, visited_goal) is not None:
+            if find_bindings(curr_goal, visited_goal) is not None:
                 return False # do not proceed
         visited.append(curr_goal)
 

@@ -28,7 +28,7 @@ def main():
     case_data = []
     for casename in target_casename:
         # Select guilty
-        rawcase = db.query("SELECT * FROM data_rawcase WHERE law_id = %s AND verdict = %s", (casename, "guilty"))
+        rawcase = db.query("SELECT * FROM data_rawcase WHERE law_id = %s AND verdict = %s", (casename, "innocent"))
         random.shuffle(rawcase)
         case_data.extend(rawcase[:NUM_PER_CASE])
     db.close()

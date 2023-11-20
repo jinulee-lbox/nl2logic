@@ -2,7 +2,7 @@ from typing import List
 
 from clingo.ast import AST, ASTType
 
-from nl2logic.logic_utils.pysolver.unify import unify
+from nl2logic.logic_utils.pysolver.unify import find_bindings
 from nl2logic.logic_utils.pysolver.parse import parse_line
 from nl2logic.logic_utils.api import asp_parse_program, asp_extract_const_list
 from nl2logic.database_utils.queries import db_find_missing_ontology
@@ -21,9 +21,10 @@ def validate_asp_list(asp_list: List, goal: AST):
             asp += "."
         # Heuristic. Change single to double quote
         asp = asp.replace("'", '"')
+        asp_dict['asp'] = asp
         
         # Heuristic. Check if asp is a rule, and head is a single literal
-        _, success = asp_parse_program([asp])
+        _, success = asp_parse_program([asp_dict])
         success = success[0]["code"] == 0
         if not success:
             error.append("Syntax error")
@@ -37,7 +38,7 @@ def validate_asp_list(asp_list: List, goal: AST):
             continue
 
         # Heuristic. Goal should unify with the goal to prove.
-        if unify(goal, parsed_asp.unpool()[0].head) is None:
+        if find_bindings(goal, parsed_asp.unpool()[0].head) is None:
             error.append("Generated head does not unify to goal")
             continue
 

@@ -8,7 +8,7 @@ from clingo.symbol import *
 from clingo.solving import *
 
 from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState, parse_line
-from .unify import unify, substitute
+from .unify import find_bindings, bind
 from .proof_state import ProofContext, ProofState
 
 def consistency_check(context: ProofContext):
@@ -65,14 +65,14 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
         rterm = guard.term
         if op == ComparisonOperator.Equal:
             # Equal : treat with `unify`
-            bindings = unify(lterm, rterm)
+            bindings = find_bindings(lterm, rterm)
             if bindings is not None:
                 state = deepcopy(state)
                 state.bind(bindings)
                 state.proved = True # Bind two literals
                 return [state]
         elif op == ComparisonOperator.NotEqual:
-            bindings = unify(lterm, rterm)
+            bindings = find_bindings(lterm, rterm)
             if bindings is None:
                 state.proved = True # Bind two literals
                 return [state]
@@ -119,14 +119,14 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
         # Check if goal unifies with rule head, and get variable mapping
         rule = context.reindex_variables(rule)
 
-        bindings = unify(goal, rule.head)
+        bindings = find_bindings(goal, rule.head)
         if bindings is None:
             continue # unification failure(rule head does not match current goal)
         else:
             is_any_rule_unified = True
         # State base to proof
         state = deepcopy(original_state)
-        substitute(state.goal, bindings)
+        bind(state.goal, bindings)
         state.rule = rule
 
         # Add binding information created by rules
@@ -153,9 +153,9 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                 for target_state, subset_proof in body_subset_proofs:
                     curr_bodygoal = deepcopy(bodygoal)
                     # bind to current bindings
-                    substitute(curr_bodygoal, bindings)
+                    bind(curr_bodygoal, bindings)
                     for subset_state in subset_proof:
-                        substitute(curr_bodygoal, subset_state.bindings)
+                        bind(curr_bodygoal, subset_state.bindings)
                     # Prove partially bound subgoals
                     new_state = ProofState(curr_bodygoal)
                     new_state.parent = state
