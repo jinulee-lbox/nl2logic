@@ -2,11 +2,10 @@ from random import shuffle
 
 from clingo.ast import AST
 
-from pysolver.parse import parse_line
 from pysolver.unify import find_bindings
-from pysolver.utils import get_hash_head, flip_sign
+from pysolver.utils import get_hash_head, flip_sign, parse_line
 
-from nl2logic.database_utils.queries import db_get_head_matching_terms, db_get_random_terms
+from nl2logic.database_utils import db_get_head_matching_terms, db_get_random_terms
 
 def find_head_matching_examples(goal: AST, max_n: int = None, more_related_goes_later=True):
     # Retrieve goals that share same prefix

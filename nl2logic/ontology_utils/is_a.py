@@ -1,6 +1,6 @@
 import networkx as nx
 
-from ..database_utils.queries import db_get_entity_relation, db_get_all_consts
+from ..database_utils import db_get_entity_relation, db_get_all_consts
 
 def get_is_a_relation() -> nx.DiGraph:
     graph = nx.DiGraph()

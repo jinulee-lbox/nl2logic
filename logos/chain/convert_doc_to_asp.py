@@ -5,13 +5,9 @@ from typing import List, Dict, Any
 from .components import *
 
 # Top-down solver
-from pysolver.parse import parse_program
-from pysolver.preprocess import preprocess
 from pysolver.utils import unproved_goal_state_to_str, anonymize_vars, UnprovedGoalState
-from pysolver.solve import solve
+from pysolver.solve import solve, ProofContext
 from pysolver.unify import find_bindings
-from pysolver.proof_state import ProofContext
-from nl2logic.logic_utils.api import asp_extract_const_list
 # from nl2logic.graphviz_utils import justification_tree_to_graphviz, graphviz_to_png
 from nl2logic.config import nl2logic_config as config
 

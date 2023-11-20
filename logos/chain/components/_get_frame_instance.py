@@ -8,7 +8,7 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 
-from nl2logic.database_utils.queries import db_get_const_information
+from nl2logic.database_utils import db_get_const_information
 
 from ..utils.chat_model import openai_chat_model
 

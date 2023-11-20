@@ -1,7 +1,7 @@
 from clingo.ast import *
 
-from nl2logic.database_utils.queries import db_get_const_information
-from nl2logic.logic_utils.api import asp_extract_const_list
+from nl2logic.database_utils import db_get_const_information
+from nl2logic.logic_utils import asp_extract_const_list
 
 def recursive_rule_to_text_conversion(term: AST) -> str:
     consts = asp_extract_const_list(str(term))

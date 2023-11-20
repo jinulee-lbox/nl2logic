@@ -1,6 +1,6 @@
 import json
 import re
-from nl2logic.database_utils.queries import db_get_asp_body_from_law_id
+from nl2logic.database_utils import db_get_asp_body_from_law_id
 from pysolver.utils import parse_line
 
 def get_skip_words(law_id, body_text):

@@ -3,7 +3,7 @@ from pygraphviz import *
 
 from pysolver.justification_tree import JustificationTree, JustificationTreeNode
 from pysolver.utils import anonymize_vars, get_hash_head, parse_line
-from nl2logic.database_utils.queries import db_get_const_information
+from nl2logic.database_utils import db_get_const_information
 
 colors = {
     "law": "#FEF5D4",

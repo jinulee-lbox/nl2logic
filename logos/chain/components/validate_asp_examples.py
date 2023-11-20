@@ -3,9 +3,9 @@ from typing import List
 from clingo.ast import AST, ASTType
 
 from pysolver.unify import find_bindings
-from pysolver.parse import parse_line
-from nl2logic.logic_utils.api import asp_parse_program, asp_extract_const_list
-from nl2logic.database_utils.queries import db_find_missing_ontology
+from pysolver.utils import parse_line
+from nl2logic.logic_utils import asp_parse_program, asp_extract_const_list
+from nl2logic.database_utils import db_find_missing_ontology
 
 def validate_asp_list(asp_list: List, goal: AST):
     result = []

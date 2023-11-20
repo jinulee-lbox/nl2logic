@@ -1,7 +1,6 @@
 from typing import *
 
-from .parse import parse_program
-from .utils import parse_line
+from .utils import parse_line, parse_program
 from .solve import solve
 from .proof_state import ProofContext
 from .justification_tree import *

@@ -11,8 +11,7 @@ from clingo.ast import AST
 
 from ..utils.chat_model import openai_chat_model
 from .get_rationale_from_asp import get_rationale_from_asp
-from pysolver.utils import get_hash_head
-from pysolver.parse import parse_line
+from pysolver.utils import get_hash_head, parse_line
 
 ASP_RATIONALE_EXAMPLE_PROMPT = \
 r"""{{'comment': '{comment}', 'asp': '{asp}'}},
