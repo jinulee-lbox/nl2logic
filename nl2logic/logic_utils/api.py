@@ -6,9 +6,9 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-from .pysolver.preprocess import preprocess
-from .pysolver.utils import parse_line
-from .pysolver import get_proof_tree
+from pysolver.preprocess import preprocess
+from pysolver.utils import parse_line
+from pysolver import get_proof_tree
 
 def asp_parse_program(terms: List[str]):
     success = []

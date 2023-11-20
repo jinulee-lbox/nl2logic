@@ -390,7 +390,7 @@ def db_get_head_matching_terms(head: str) :
     data = db.query("""
     SELECT nl_description.text AS comment,asp_term.term AS asp, nl_description.source AS source FROM
     ((nl2logic.text_comment nl_description JOIN nl2logic.rel_text_term rt ON ((nl_description.id = rt.text_id))) JOIN nl2logic.asp_term asp_term ON ((rt.term_id = asp_term.id))) WHERE (asp_term.term REGEXP %s)
-    """, (head + r"[^a-z0-9].*"))
+    """, (r"^" + head + r"[^a-z0-9].*"))
 
     db.close()
     return data
