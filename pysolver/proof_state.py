@@ -111,10 +111,10 @@ class ProofState():
             if is_negated(curr_state.goal):
                 negation_count += 1
             # Found a loop
-            if find_bindings(goal, curr_state.goal):
+            if find_bindings(goal, curr_state.goal) is not None:
                 loop_found = True
                 break
-            elif find_bindings(goal, flip_sign(curr_state.goal)):
+            elif find_bindings(goal, flip_sign(curr_state.goal)) is not None:
                 loop_found = True
                 break
             curr_state = curr_state.parent
