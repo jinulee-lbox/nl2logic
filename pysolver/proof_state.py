@@ -34,23 +34,25 @@ class ProofContext():
         # Parse string to AST
         rule = parse_line(line["asp"])
         assert "asp" in line
+        preprocessed_rule = preprocess(rule)
         
         # Add to preprocessed program list
-        self.preprocessed_program.extend(preprocess(rule))
+        self.preprocessed_program.extend(preprocessed_rule)
         
         # Add to rule dict (for fast finding)
-        hash_head = get_hash_head(rule)
-        if hash_head not in self.rule_dict:
-            self.rule_dict[hash_head] = []
-        
-        # Check for duplicates
-        is_dup = False
-        # FIXME
-        # for existing_rule in self.rule_dict[hash_head]:
-        #     if find_bindings(rule, existing_rule):
-        #         is_dup = True
-        if not is_dup:
-            self.rule_dict[hash_head].append(rule)
+        for rule in preprocessed_rule:
+            hash_head = get_hash_head(rule)
+            if hash_head not in self.rule_dict:
+                self.rule_dict[hash_head] = []
+            
+            # Check for duplicates
+            is_dup = False
+            # FIXME
+            # for existing_rule in self.rule_dict[hash_head]:
+            #     if find_bindings(rule, existing_rule):
+            #         is_dup = True
+            if not is_dup:
+                self.rule_dict[hash_head].append(rule)
 
     def find_rule(self, goal: AST):
         hash_head = get_hash_head(goal)
