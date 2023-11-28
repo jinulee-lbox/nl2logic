@@ -7,7 +7,7 @@ from clingo.symbol import *
 from clingo.solving import *
 
 from pysolver.preprocess import preprocess
-from pysolver.utils import parse_line
+from pysolver.utils import parse_line, flip_sign
 from pysolver import get_proof_tree
 
 def asp_parse_program(terms: List[str]):
@@ -168,10 +168,7 @@ def asp_run(program: List[Dict[str, Any]], conc_symbols: List[AST], output_style
                 "tree": tree
             })
         else:
-            if conc_symbol.startswith("not "):
-                new_conc_symbol = conc_symbol.replace("not ", "")
-            else:
-                new_conc_symbol = "not " + conc_symbol
+            new_conc_symbol = flip_sign(conc_symbol)
             tree = get_proof_tree(program, new_conc_symbol)
             flag_success = False
             if tree:
