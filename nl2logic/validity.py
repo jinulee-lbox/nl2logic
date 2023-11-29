@@ -109,7 +109,14 @@ def validity_check(data, mode):
         validity_msg.append(f"온톨로지 DB에 등록되지 않은 단어: [{', '.join(missing_ontology_total)}]")
 
     # 5) Run ASP
-    asp_result = asp_run(program, conc_symbols)
+    if validity_flag:
+        asp_result = asp_run(program, conc_symbols)
+    else:
+        asp_result = {
+            "satisfactory": "Error",
+            "proofs": []
+        }
+
     # check validity
     if mode == "case":
         all_conc_proved = True
