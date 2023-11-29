@@ -146,10 +146,12 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
             # iter3. subset: [b, c], bodygoal: d
 
             body_subset_proofs = [(state, [])]
+            subgoal_cache = {} # Cache results to prevent exponential explosion if many possibilities exist
             for i in range(len(rule.body)):
                 bodygoal = deepcopy(rule.body[i])
 
                 new_body_subset_proofs = []
+
                 for target_state, subset_proof in body_subset_proofs:
                     curr_bodygoal = deepcopy(bodygoal)
                     # bind to current bindings
@@ -157,9 +159,13 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                     for subset_state in subset_proof:
                         bind(curr_bodygoal, subset_state.bindings)
                     # Prove partially bound subgoals
-                    new_state = ProofState(curr_bodygoal)
-                    new_state.parent = state
-                    new_state_proofs = recursive_solve(new_state, context, unproved_callback)
+                    if curr_bodygoal in subgoal_cache:
+                        new_state_proofs = subgoal_cache[curr_bodygoal]
+                    else:
+                        new_state = ProofState(curr_bodygoal)
+                        new_state.parent = state
+                        new_state_proofs = recursive_solve(new_state, context, unproved_callback)
+                        subgoal_cache[curr_bodygoal] = new_state_proofs
 
                     # Extend subset (list of already proven goals) with fresh proved goal
                     for new_proof in new_state_proofs: # Each ProofStates contain single binding
@@ -167,8 +173,11 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                         new_target_state = deepcopy(target_state)
                         new_curr_proof = subset_proof + [new_proof] # Extend subset
                         new_body_subset_proofs.append((new_target_state, new_curr_proof))
+                
                 # update body_subset_proofs
                 body_subset_proofs = new_body_subset_proofs
+            # garbage collection
+            del subgoal_cache
             
             for target_state, proof in body_subset_proofs:
                 target_state.add_proof(proof, rule)

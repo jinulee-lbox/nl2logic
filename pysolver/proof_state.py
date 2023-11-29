@@ -155,7 +155,7 @@ class ProofState():
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k in ["parent"]:
+            if k in ["parent", "proof", "bindings"]:
                 setattr(result, k, copy(v)) # Shallow copy to prevent infinite recursion
             else:
                 setattr(result, k, deepcopy(v, memo))
