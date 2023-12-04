@@ -35,7 +35,6 @@ def solve(goal: AST, context: ProofContext, unproved_callback=None) -> List[Proo
 def recursive_solve(state: ProofState, context: ProofContext, unproved_callback = None) -> List[ProofState]:
     # state: pointer to the current goal in the full proof
     goal = state.goal
-    print(goal)
 
     ##### 1. Check coinduction (loop in proofs) #####
     result_str = state.detect_loop()
