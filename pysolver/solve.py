@@ -35,6 +35,7 @@ def solve(goal: AST, context: ProofContext, unproved_callback=None) -> List[Proo
 def recursive_solve(state: ProofState, context: ProofContext, unproved_callback = None) -> List[ProofState]:
     # state: pointer to the current goal in the full proof
     goal = state.goal
+    print(goal)
 
     ##### 1. Check coinduction (loop in proofs) #####
     result_str = state.detect_loop()
@@ -116,10 +117,11 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
 
     # apply rules recursively
     for rule in rules:
+        rule_hash = rule.__hash__() # hash before reindexing
         # Check if goal unifies with rule head, and get variable mapping
         rule = context.reindex_variables(rule)
 
-        bindings = find_bindings(goal, rule.head)
+        bindings = find_bindings(rule.head, goal)
         if bindings is None:
             continue # unification failure(rule head does not match current goal)
         else:
@@ -127,12 +129,11 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
         # State base to proof
         state = deepcopy(original_state)
         bind(state.goal, bindings)
-        state.rule = rule
 
         # Add binding information created by rules
         if len(rule.body) == 0:
             # fact, without rule body
-            state.add_proof([], rule)
+            state.add_proof([])
             proved_states.append(state)
         else: # len(rule.body) >= 1
             # Recursively apply the rules
@@ -146,7 +147,7 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
             # iter3. subset: [b, c], bodygoal: d
 
             body_subset_proofs = [(state, [])]
-            subgoal_cache = {} # Cache results to prevent exponential explosion if many possibilities exist
+            # subgoal_cache = {} # Cache results to prevent exponential explosion if many possibilities exist
             for i in range(len(rule.body)):
                 bodygoal = deepcopy(rule.body[i])
 
@@ -159,13 +160,14 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                     for subset_state in subset_proof:
                         bind(curr_bodygoal, subset_state.bindings)
                     # Prove partially bound subgoals
-                    if curr_bodygoal in subgoal_cache:
-                        new_state_proofs = subgoal_cache[curr_bodygoal]
-                    else:
-                        new_state = ProofState(curr_bodygoal)
-                        new_state.parent = state
-                        new_state_proofs = recursive_solve(new_state, context, unproved_callback)
-                        subgoal_cache[curr_bodygoal] = new_state_proofs
+                    # if curr_bodygoal in subgoal_cache:
+                    #     new_state_proofs = subgoal_cache[curr_bodygoal]
+                    # else:
+                    new_state = ProofState(curr_bodygoal)
+                    new_state.parent = state
+                    new_state.rule_hash = rule_hash
+                    new_state_proofs = recursive_solve(new_state, context, unproved_callback)
+                    # subgoal_cache[curr_bodygoal] = new_state_proofs
 
                     # Extend subset (list of already proven goals) with fresh proved goal
                     for new_proof in new_state_proofs: # Each ProofStates contain single binding
@@ -177,10 +179,10 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                 # update body_subset_proofs
                 body_subset_proofs = new_body_subset_proofs
             # garbage collection
-            del subgoal_cache
+            # del subgoal_cache
             
             for target_state, proof in body_subset_proofs:
-                target_state.add_proof(proof, rule)
+                target_state.add_proof(proof)
                 proved_states.append(target_state)
                 
     # Recover original state

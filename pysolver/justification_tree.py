@@ -99,17 +99,17 @@ class JustificationTree():
                 # Group proofs by rules
                 substates_per_rule = {}
                 for state in states_per_goal:
-                    if state.rule is None:
+                    if len(state.proof) == 0:
                         # BFS Base case - Proved without rule induction
                         pass
                     else:
                         # BFS Propagation
                         # Collect subgoals per rule index
                         # a :- b(X), c(X) -> group all b(X), group all c(X)
-                        if state.rule not in substates_per_rule:
-                            substates_per_rule[state.rule] = [list() for _ in state.rule.body]
+                        if state.proof[0].rule_hash not in substates_per_rule:
+                            substates_per_rule[state.proof[0].rule_hash] = [list() for _ in state.proof]
                         for idx, substate in enumerate(state.proof):
-                            substates_per_rule[state.rule][idx].append(substate)
+                            substates_per_rule[state.proof[0].rule_hash][idx].append(substate)
                 # BFS Proceed (group same rules together)
                 for rule, substates_per_idx in substates_per_rule.items():
                     for ith_goals in substates_per_idx:

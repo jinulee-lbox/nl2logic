@@ -88,7 +88,7 @@ class ProofState():
         # Bindings
         self.goal = deepcopy(goal)
         self.bindings: Dict[AST, AST] = {}
-        self.rule: AST = None
+        self.rule_hash: int = None
         # Children
         self.proof: List[ProofState]= [] # proved
 
@@ -100,6 +100,8 @@ class ProofState():
 
     def detect_loop(self) -> str:
         goal = self.goal
+        if is_negated(goal):
+            goal = flip_sign(goal)
         loop_found = False
         positive_loop = False
         
@@ -108,19 +110,22 @@ class ProofState():
         curr_state = self.parent
         negation_count = 0
         while curr_state is not None:
-            if is_negated(curr_state.goal):
+            curr_goal = curr_state.goal
+            if is_negated(curr_goal):
                 negation_count += 1
+                curr_goal = flip_sign(curr_goal)
             # Found a loop
-            if find_bindings(goal, curr_state.goal) is not None:
-                loop_found = True
-                break
-            elif find_bindings(goal, flip_sign(curr_state.goal)) is not None:
+            bindings = find_bindings(curr_state.goal, goal)
+            if bindings is not None and self.rule_hash == curr_state.rule_hash:
+                # Check for variables
                 loop_found = True
                 break
             curr_state = curr_state.parent
         # Return result
         if loop_found:
-            if negation_count > 0 and negation_count % 2 == 0:
+            if is_negated(goal):
+                return "success"
+            elif negation_count > 0 and negation_count % 2 == 0:
                 return "success"
             else:
                 return "failure"
@@ -131,24 +136,15 @@ class ProofState():
         return self._pprint(indent=0)
     def _pprint(self, indent: int) -> str:
         string = "  " * indent
-        string += f"{str(self.goal)} : {str(self.rule)}\n"
+        string += f"{str(self.goal)}\n"
         # Proved subgoals
         for subgoal in self.proof:
             string += subgoal._pprint(indent+1)
         return string
 
-    def add_proof(self, proof, rule):
+    def add_proof(self, proof):
         self.proved = True
-
-        for p in proof:
-            bind(self.goal, p.bindings)
-        self.bindings = find_bindings(self.original_goal, self.goal)
-        self.rule = rule
-
-        # Co-link current state and subgoals
         self.proof = proof
-        for subgoal_state in proof:
-            subgoal_state.parent = self
 
     def __deepcopy__(self, memo):
         cls = self.__class__
