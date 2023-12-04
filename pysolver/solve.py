@@ -128,6 +128,7 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
         # State base to proof
         state = deepcopy(original_state)
         bind(state.goal, bindings)
+        state.bindings = bindings
 
         # Add binding information created by rules
         if len(rule.body) == 0:
