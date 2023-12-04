@@ -196,6 +196,12 @@ def asp_run(program: List[Dict[str, Any]], conc_symbols: List[AST], output_style
                         "proved": 0,
                         "tree": tree
                     })
+                else:
+                    proofs.append({
+                        "conclusion": str(conc_symbol),
+                        "proved": 0,
+                        "tree": "Error"
+                    })
 
     return {
         "satisfactory": "Satisfied" if flag_success else "Unsatisfied",
