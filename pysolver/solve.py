@@ -83,7 +83,8 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
             rterm = rterm.symbol
             # Only compare numbers
             if not lterm.type == rterm.type == SymbolType.Number:
-                raise ValueError(f"Non-integer literals ({lterm}, {rterm}) cannot be compared")
+                # raise ValueError(f"Non-integer literals ({lterm}, {rterm}) cannot be compared")
+                return False
             if op == ComparisonOperator.GreaterThan and lterm.number > rterm.number or \
                op == ComparisonOperator.GreaterEqual and lterm.number >= rterm.number or \
                op == ComparisonOperator.LessThan and lterm.number < rterm.number or \
