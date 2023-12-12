@@ -95,6 +95,15 @@ def _find_bindings(ast1: AST, ast2: AST):
 
     return None
 
+def equivalent(ast1, ast2):
+    bindings = find_bindings(ast1, ast2)
+    if bindings is None:
+        return False
+    for b in bindings.values():
+        if b.ast_type != ASTType.Variable:
+            return False
+    return True
+
 def bind(input_ast, bindings: Dict[str, AST]):
     # Explicit call stack maintaining for a bit of speedup
     if len(bindings) == 0:

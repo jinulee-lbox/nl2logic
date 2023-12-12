@@ -168,56 +168,6 @@ def get_constraints(rule:AST) -> [AST] :
         ))
     return constraints
 
-def translate_numeric_string(rule:AST) -> AST:
-    # Recursive search, and apply `utils.convert_numeric_string_to_int` for all str
-    def convert_num_str(term: AST) -> AST:
-        new_term = deepcopy(term) # value to return
-        if term.ast_type == ASTType.UnaryOperation:
-            new_argument = convert_num_str(term.argument)
-            new_term.argument = new_argument
-        elif term.ast_type == ASTType.BinaryOperation:
-            new_left = convert_num_str(term.left)
-            new_right = convert_num_str(term.right)
-            new_term.left = new_left
-            new_term.right = new_right
-        elif term.ast_type == ASTType.Function:
-            new_arguments = []
-            for argument in term.arguments:
-                new_arguments.append(convert_num_str(argument))
-            new_term.arguments = new_arguments
-        elif term.ast_type == ASTType.SymbolicTerm:
-            if term.symbol.type == SymbolType.String:
-                new_str = convert_numeric_string_to_int(term.symbol.string)
-                if isinstance(new_str, int):
-                    new_term = SymbolicTerm(
-                        location=term.location,
-                        symbol=Number(new_str)
-                    )
-        elif term.ast_type == ASTType.Variable:
-            pass
-        else:
-            raise ValueError(f"Unsupported type {term.ast_type}")
-        return new_term
-
-    if rule.head.ast_type == ASTType.Literal:
-        if 'atom' not in rule.head.child_keys:
-            pass
-        elif rule.head.atom.ast_type == ASTType.BooleanConstant:
-            pass # Do nothing
-        else:
-            rule.head.atom.symbol = convert_num_str(rule.head.atom.symbol)
-    elif rule.head.ast_type == ASTType.BooleanConstant:
-        pass # do nothing
-
-    for body_lit in rule.body:
-        if body_lit.atom.ast_type == ASTType.SymbolicAtom:
-            body_lit.atom.symbol = convert_num_str(body_lit.atom.symbol)
-        elif body_lit.atom.ast_type == ASTType.Comparison:
-            body_lit.atom.term = convert_num_str(body_lit.atom.term)
-            for guard in body_lit.atom.guards:
-                guard.term = convert_num_str(guard.term)
-    return rule
-
 def preprocess(rule: AST) -> List[AST]:
     """Translate raw rule statement to preprocessed rule by...
     - Unpack OR statement aggregates
@@ -242,7 +192,7 @@ def preprocess(rule: AST) -> List[AST]:
             unpooled_rules.extend(rule.unpool())
 
         for t3 in unpooled_rules:
-            t3 = translate_numeric_string(t3)
+            # t3 = translate_numeric_string(t3)
             new_rules.append(t3)
 
             # Dual statements

@@ -7,7 +7,7 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState, parse_line
+from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState, parse_line, convert_numeric_string_to_int
 from .unify import find_bindings, bind
 from .proof_state import ProofContext, ProofState
 
@@ -82,15 +82,31 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
             lterm = lterm.symbol # Extract clingo.Symbol values
             rterm = rterm.symbol
             # Only compare numbers
-            if not lterm.type == rterm.type == SymbolType.Number:
+            if lterm.type == rterm.type == SymbolType.Number:
+                if op == ComparisonOperator.GreaterThan and lterm.number > rterm.number or \
+                    op == ComparisonOperator.GreaterEqual and lterm.number >= rterm.number or \
+                    op == ComparisonOperator.LessThan and lterm.number < rterm.number or \
+                    op == ComparisonOperator.LessThan and lterm.number <= rterm.number:
+                        state.proved = True
+                        return [state]
+                else:
+                    return []
+            elif lterm.type == rterm.type == SymbolType.String:
+                lterm_val = convert_numeric_string_to_int(lterm.string)
+                rterm_val = convert_numeric_string_to_int(rterm.string)
+                if isinstance(lterm_val, str) or isinstance(rterm_val, str):
+                    return []
+                if op == ComparisonOperator.GreaterThan and lterm_val > rterm_val or \
+                    op == ComparisonOperator.GreaterEqual and lterm_val >= rterm_val or \
+                    op == ComparisonOperator.LessThan and lterm_val < rterm_val or \
+                    op == ComparisonOperator.LessThan and lterm_val <= rterm_val:
+                        state.proved = True
+                        return [state]
+                else:
+                    return []
+            else:
                 # raise ValueError(f"Non-integer literals ({lterm}, {rterm}) cannot be compared")
-                return False
-            if op == ComparisonOperator.GreaterThan and lterm.number > rterm.number or \
-               op == ComparisonOperator.GreaterEqual and lterm.number >= rterm.number or \
-               op == ComparisonOperator.LessThan and lterm.number < rterm.number or \
-               op == ComparisonOperator.LessThan and lterm.number <= rterm.number:
-                    state.proved = True
-                    return [state]
+                return []
         # Comparison clear!!
 
     ##### 3. Check classic negation (not x) #####
