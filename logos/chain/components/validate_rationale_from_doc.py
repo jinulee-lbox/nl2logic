@@ -15,10 +15,11 @@ r"""You are a legal expert. Your goal is to read the document given, and judge i
 """
 
 VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT = \
-r"""Answer with 'Yes.' or 'No.'. Can this sentence be "inferred" without contradiction?.
+r"""Can this sentence be true without contradiction against the document?
+First answer with 'Yes.' or 'No.', and describe the reason.
 """
 
-def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[str, str]:
+def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[bool, str]:
     # Set example few-shot prompt
 
     get_asp_and_rationale_prompt = ChatPromptTemplate.from_messages([
@@ -32,6 +33,6 @@ def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[str, 
     chain = LLMChain(llm=openai_chat_model(), prompt=get_asp_and_rationale_prompt)
     result = str(chain.run({"goal": natural_language_goal, "body_text": body_text}))
     if "no." in result.lower():
-        return False
+        return False, result.replace("No.", "").replace("no.", "").strip()
     else:
-        return True
+        return True, result.replace("Yes.", "").replace("yes.", "").strip()

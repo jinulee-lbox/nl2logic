@@ -60,13 +60,23 @@ def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
             core = term.atom.symbol.argument
             tail = "이 아니다."
         else:
-            core = term.atom.symbol
+            try:
+                core = term.atom.symbol
+            except:
+                print(term, term.ast_type)
+                return ""
             tail = ""
         return _recursive_rule_to_text_conversion(core, const_info) + tail
         
     if term.ast_type == ASTType.BinaryOperation:
         print(term)
         return str(term)
+    if term.ast_type == ASTType.UnaryOperation:
+        if term.operator_type != UnaryOperator.Minus:
+            raise ValueError("No other AST.UnaryOperator than Minus is supported")
+        core = term.argument
+        tail = "이 아니다."
+        return _recursive_rule_to_text_conversion(core, const_info) + tail
     
     if term.ast_type == ASTType.Function:
         fn_name = term.name
@@ -78,7 +88,7 @@ def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
                 description = ", ".join([f'%{i}'for i in range(arity)])
                 description += f"는 {fn_name} 을 만족한다."
             else:
-                description += f"{fn_name} 이다."
+                description = f"{fn_name} 이다."
             data = {"description": description}
         arguments = [_recursive_rule_to_text_conversion(x, const_info) for x in term.arguments]
         frame = data["description"]
@@ -96,4 +106,9 @@ def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
             term_str.strip('"')
         return term_str
 
-    raise ValueError("No matching type")
+    raise ValueError(f"No matching type: {term.ast_type} for {term}")
+
+if __name__ == "__main__":
+    l = []
+    parse_string("xxx(-isEffective(driversLicense)) :- -hello(X).", l.append)
+    recursive_rule_to_text_conversion(l[1])

@@ -3,15 +3,14 @@ import logging
 from typing import List, Dict, Any
 
 from .components import *
+from .utils.logic_to_text import recursive_rule_to_text_conversion
 
 # Top-down solver
 from pysolver.utils import unproved_goal_state_to_str, anonymize_vars, UnprovedGoalState
 from pysolver.solve import solve, ProofContext
-from pysolver.unify import find_bindings
+from pysolver.unify import equivalent
 # from nl2logic.graphviz_utils import justification_tree_to_graphviz, graphviz_to_png
 from nl2logic.config import nl2logic_config as config
-
-get_key = lambda x: anonymize_vars(str(x[0])) if isinstance(x, tuple) else anonymize_vars(str(x))
 
 
 def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, few_shot_n: int=8, retry_count: int=3):
@@ -22,11 +21,11 @@ def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, f
 
         # Check visited
         for visited_goal in visited:
-            if find_bindings(curr_goal, visited_goal) is not None:
+            if equivalent(curr_goal, visited_goal):
                 return False # do not proceed
         visited.append(curr_goal)
 
-        curr_goal_str = get_key(curr_goal) # Remove variables
+        curr_goal_str = anonymize_vars(str(curr_goal)) # Remove variables
         # curr_goal = parse_line(curr_goal_str + ".").head
         # if unproved_reason == USER_PROVED:
         #     continue
@@ -43,23 +42,38 @@ def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, f
         else:
             # Select valid examples (at the back of the list, by find_head_matching_example param `more_related_goes_later`)
             rule_examples = rule_examples[-few_shot_n:]
-        logging.info("---------------------")
-        logging.info("Examples:")
-        for ex in rule_examples: logging.info(f"-    {ex['comment']}\n  -> {ex['asp']}")
-        logging.info("---------------------")
+        for example in rule_examples:
+            example['comment_auto'] = recursive_rule_to_text_conversion(parse_line(example['asp']))
+        # logging.info("---------------------")
+        # logging.info("Examples:")
+        # for ex in rule_examples: logging.info(f"-    {ex['comment']}\n  -> {ex['asp']}")
+        # logging.info("---------------------")
 
         # Core step! generate ASP and rationale from the document.
         proved = False; curr_retry_count=retry_count
-        error_prompt = None
+        error_prompt = ""
         while not proved and curr_retry_count > 0:
             logging.info(f"Retry count: {curr_retry_count} left")
             curr_retry_count -= 1
 
             # Generate possible ASPs
-            result = get_asp_and_rationale_from_doc(curr_goal, curr_goal_str, body_text, rule_examples, error_prompt)
-            if result is None:
-                logging.info("LLM failed to generate valid JSON")
+            rationales = get_rationale_from_doc(curr_goal_str, body_text, rule_examples)
+            if rationales is None:
+                logging.info("LLM failed to generate valid JSON for rationales")
                 continue
+            result = []
+            asp_dedup = set()
+            for r in rationales:
+                asps = get_asp_from_rationale(curr_goal_str, r, rule_examples)
+                for a in asps:
+                    if a in asp_dedup:
+                        continue
+                    asp_dedup.append(a)
+                    result.append({
+                        "asp": a,
+                        "comment": r
+                    })
+            # result = get_asp_and_rationale_from_doc(curr_goal, curr_goal_str, body_text, rule_examples, error_prompt)
 
             # Syntax / Ontology checking
             valid_new_asps, error = validate_asp_list(result, curr_goal)
@@ -73,12 +87,14 @@ def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, f
             # Generate
             logging.info(f"Hypo count {len(valid_new_asps)}")
             if len(valid_new_asps) > 0:
+                error_prompt = "" # reset error prompt
                 for asp in valid_new_asps:
                     # Covnert ASP to string
                     asp["comment_raw"] = asp["comment"]
                     asp["comment"] = get_rationale_from_asp(parse_line(asp["asp"]))
                     logging.info(json.dumps(asp, indent=4, ensure_ascii=False))
-                    if asp["source"] in ["commonsense"] or validate_rationale_from_doc(asp["comment"], body_text):
+                    self_validation, self_val_fail_msg = validate_rationale_from_doc(asp["comment"], body_text)
+                    if self_validation:
                         # Validation complete
                         logging.info("=> Proved.")
                         # Update stack by adding new goals / remove unproved goals
@@ -86,7 +102,8 @@ def logos_add_new_rule_function_factory(context: ProofContext, body_text: str, f
                         
                         proved = True # end the loop
                     else:
-                        logging.info("=> Unproved.")
+                        logging.info(f"=> Unproved. Reason: {self_val_fail_msg}")
+                        error_prompt += str(asp["asp"]) + "\n" + "Error: Self-validation failed because: " + self_val_fail_msg
                         pass
             else:
                 logging.info("- No proofs to be analyzed")
@@ -140,7 +157,7 @@ def convert_doc_to_asp(doc: Dict[str, Any], few_shot_n=5, retry_count=3, graph_o
             context,
             unproved_callback=logos_add_new_rule_function_factory(context, body_text)
         )
-        logging.info(len(proofs), "proofs found")
+        logging.info(f"{len(proofs)} proofs found")
         if len(proofs) > 0:
             logging.info(proofs[0])
                 
