@@ -1,0 +1,27 @@
+[
+    {
+        "id": 0,
+        "statement": "is(harry, round).",
+        "description": "Harry is round."
+    },
+    {
+        "id": 1,
+        "statement": "is(X, quiet) :- is(X, smart), is(X, blue).",
+        "description": "If someone is smart and blue then they are quiet."
+    },
+    {
+        "id": 2,
+        "statement": "likes(X, dog) :- likes(X, tiger).",
+        "description": "If someone likes the tiger then they like the dog."
+    },
+    {
+        "id": 3,
+        "statement": "visits(bear, rabbit).",
+        "description": "The bear visits the rabbit."
+    },
+    {
+        "id": 4,
+        "statement": "is(squirrel, rough) :- needs(squirrel, lion).",
+        "description": "If the squirrel needs the lion then the squirrel is rough."
+    }
+]

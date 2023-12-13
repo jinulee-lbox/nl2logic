@@ -1,0 +1,27 @@
+[
+    {
+        "id": 0,
+        "statement": "is(dave, kind).",
+        "description": "Upon meeting Dave, you'll notice he's green and kind."
+    },
+    {
+        "id": 1,
+        "statement": "is(X, young) :- is(X, kind), is(X, green), is(X, round).",
+        "description": "If you meet a kind green person with a round shape they will also be young."
+    },
+    {
+        "id": 2,
+        "statement": "is(X, big) :- is(X, red), is(X, green).",
+        "description": "If a person is red and green, then they will present as big."
+    },
+    {
+        "id": 3,
+        "statement": "is(bob, cold).",
+        "description": "Bob is big and seems cold, but he's just green."
+    },
+    {
+        "id": 4,
+        "statement": "is(X, red) :- is(X, big), is(X, young).",
+        "description": "All the big and young boys at the park are red."
+    }
+]
