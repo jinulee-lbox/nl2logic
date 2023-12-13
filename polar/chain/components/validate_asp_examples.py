@@ -5,9 +5,8 @@ from clingo.ast import AST, ASTType
 from pysolver.unify import find_bindings
 from pysolver.utils import parse_line
 from nl2logic.logic_utils import asp_parse_program, asp_extract_const_list
-from nl2logic.database_utils import db_find_missing_ontology
 
-def validate_asp_list(asp_list: List, goal: AST):
+def validate_asp_list(asp_list: List, goal: AST, polar_context):
     result = []
     error = []
     for asp_dict in asp_list:
@@ -43,10 +42,11 @@ def validate_asp_list(asp_list: List, goal: AST):
             continue
 
         const_list = asp_extract_const_list(asp, exclude_underscore=True)
-        missing_ontology = db_find_missing_ontology(const_list)
-        if len(missing_ontology) > 0: # missing ontology exists
-            error.append(f"Missing ontology: {missing_ontology}")
-            continue
+        if polar_context.ontology_data is not None and polar_context.config.validate_ontology:
+            missing_ontology = polar_context.find_missing_ontology(const_list)
+            if len(missing_ontology) > 0: # missing ontology exists
+                error.append(f"Missing ontology: {missing_ontology}")
+                continue
 
         # If all satisfied, add to successful results.
         asp_dict["asp"] = asp

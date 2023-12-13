@@ -3,15 +3,12 @@ from clingo.ast import *
 from nl2logic.database_utils import db_get_const_information
 from nl2logic.logic_utils import asp_extract_const_list
 
-def recursive_rule_to_text_conversion(term: AST) -> str:
+def statement_to_text(term: AST, polar_context) -> str:
     consts = asp_extract_const_list(str(term))
     consts = [x[0] for x in consts] # Remove arity, only leave the constant string
-    if len(consts) > 0:
-        const_info = db_get_const_information(consts)
-    else:
+    if len(consts) == 0:
         return str(term)
-    
-    return _recursive_rule_to_text_conversion(term, const_info)
+    return _recursive_rule_to_text_conversion(term, polar_context.ontology_data)
 
 def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
     # Rule
@@ -111,4 +108,4 @@ def _recursive_rule_to_text_conversion(term: AST, const_info) -> str:
 if __name__ == "__main__":
     l = []
     parse_string("xxx(-isEffective(driversLicense)) :- -hello(X).", l.append)
-    recursive_rule_to_text_conversion(l[1])
+    statement_to_text(l[1])

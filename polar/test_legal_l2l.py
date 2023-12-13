@@ -4,7 +4,7 @@ import logging
 
 from nl2logic.database_utils.db_utils import DatabaseAPI
 from nl2logic.config import set_logger
-from chain.convert_doc_to_asp import convert_doc_to_asp
+from polar.chain.generate_abductive_proof import generate_abductive_proof
 
 file_dir = "data/precedent_traffic_crimes.jsonl"
 target_casename = [
@@ -35,7 +35,7 @@ def main():
 
     for case in case_data:
         print(json.dumps(case, indent=4, ensure_ascii=False))
-        _, program = convert_doc_to_asp(case, few_shot_n=8)
+        _, program = generate_abductive_proof(case)
         # result = result[0] # First goal only
         with open("logs/logos_trial_result.txt", "a") as file:
             file.write("==============================\n")

@@ -14,7 +14,7 @@ from .get_rationale_from_asp import get_rationale_from_asp
 from pysolver.utils import get_hash_head, parse_line
 
 RATIONALE_EXAMPLE_PROMPT = \
-r"""'{comment}',
+r"""'{description}',
 """
 
 CONVERT_TO_ASP_PROMPT = \
@@ -23,7 +23,7 @@ Format examples:
 """
 
 FIND_RATIONALE_FROM_DOC_PROMPT = \
-r"""Given the document, find a valid proof for {curr_goal_text} referring to the document.
+r"""Given the document, find sentences related to {curr_goal_text} referring to the document.
 Return type: Python List of String.
 """
 

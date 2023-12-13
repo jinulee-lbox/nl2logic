@@ -11,7 +11,7 @@ from langchain.prompts import (
 from ..utils.chat_model import openai_chat_model
 
 VALIDATE_RATIONALE_FROM_DOC_PROMPT = \
-r"""You are a legal expert. Your goal is to read the document given, and judge if the sentence is true or at least not contradictory to the document.
+r"""Your goal is to read the document given, and judge if the sentence is true or at least not contradictory to the document.
 """
 
 VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT = \

@@ -47,7 +47,9 @@ def get_skip_words(law_id, body_text):
 
     return skip_words
 
-def get_initial_program(doc):
+def get_initial_program(doc, context):
+    if len(context.world_data) == 0:
+        return []
     law_ids = []
     law_ids.append(doc['law_id'])
     # Add default keys
