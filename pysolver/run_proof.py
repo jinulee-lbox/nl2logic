@@ -37,8 +37,6 @@ def get_unproved_goals(program: List[Dict[str, Any]], goal: AST) -> List[AST]:
     return result
 
 if __name__ == "__main__":
-    from .utils import unproved_goal_state_to_str
-
     program = """fin(X) :- not a(X).
 not fin(X) :- a(X).
 a(X) :- z(X), not b(X, _).
@@ -48,9 +46,9 @@ b(X, 1) :- c(X).
 not b(X, 1) :- not c(X).
 b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
-z(k).
-"""
-    result = get_proof_tree(program, parse_line("not fin(_).").head)
+z(k)."""
+    program = [{"asp": x.strip()} for x in program.split("\n")]
+    result = get_proof_tree(program, parse_line("is(harry, nice).").head)
     print(result)
     # result = get_unproved_goals(program, parse_line("not fin(_).").head, {})
     # print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])

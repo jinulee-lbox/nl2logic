@@ -115,7 +115,7 @@ class ProofState():
                 negation_count += 1
                 curr_goal = flip_sign(curr_goal)
             # Found a loop
-            if equivalent(curr_state.goal, goal) and self.rule_hash == curr_state.rule_hash:
+            if find_bindings(curr_goal, goal) is not None: # and self.rule_hash == curr_state.rule_hash:
                 # Check for variables
                 loop_found = True
                 break

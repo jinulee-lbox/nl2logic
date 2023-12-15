@@ -52,8 +52,8 @@ for DEPTH in [1, 3, 5]:
             
             # Provable goals
             for q in data["questions"].values():
-                if q['QDep'] != DEPTH:
-                    continue
+                # if q['QDep'] != DEPTH:
+                #     continue
                 cnt += 1
                 goal = parse_triple(q['representation']).lower()
                 prgm = []
@@ -75,6 +75,7 @@ for DEPTH in [1, 3, 5]:
                     try:
                         asp_run_result = asp_run(prgm, asp_parse_conclusion([new_goal])[0], output_style=None)
                     except RecursionError:
+                        miss_cnt += 1
                         print(json.dumps(q, indent=4))
                         pass
                     if asp_run_result["satisfactory"] != "Satisfied":
@@ -95,6 +96,6 @@ for DEPTH in [1, 3, 5]:
     print(cnt, miss_cnt)
     # Sample only 300 examples
     shuffle(results)
-    results = results[:300]
+    results = results[:600]
     with open(f"data/ruletaker_depth{DEPTH}/test_data.json", "w") as file:
         json.dump(results, file, indent=4)

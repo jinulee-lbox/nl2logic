@@ -4,6 +4,8 @@ from clingo.symbol import *
 import re
 from enum import Enum
 
+from .preprocess import preprocess
+
 UNIT_FACTOR = {
     # Numeric units
     "%" : 1000,
@@ -121,6 +123,43 @@ def flip_sign(ast):
         raise ValueError("Does not support DoubleNegation")
     return new_ast
 
+def extract_const_list(term: AST, exclude_underscore:bool = True):
+    # Refer to official Potassco guide for details in Transformer.
+    const_list = []
+    class ConstantTracker(Transformer):
+        def visit_SymbolicTerm(self, node):
+            try:
+                name = node.symbol.name
+                arity = len(node.symbol.arguments)
+                if not exclude_underscore or not name.startswith("_"):
+                    const_list.append((name, arity))
+                self.visit_children(node)
+                return node # No change
+            except Exception:
+                # number, etc
+                return node
+        def visit_Function(self, node):
+            name = node.name
+            arity = len(node.arguments)
+            if not exclude_underscore or not name.startswith("_"):
+                const_list.append((name, arity))
+            self.visit_children(node)
+            return node # No change
+    
+    # parse_string converts string to AST.
+    result = []
+    try:
+        if term.strip().endswith('.'):
+            parse_string(term, result.append)
+        # else, add a period and parse
+        else:
+            parse_string(term + ".", result.append)
+        result = result[1]  # AST
+        ConstantTracker()(result)
+    except Exception as e:
+        return []
+    return const_list
+
 def anonymize_vars(goal_str):
     return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", goal_str) # Remove variables
 
@@ -130,37 +169,26 @@ def parse_line(goal: str):
     goal: AST = _temp[1]
     return goal
 
-def parse_program(program: str):
-    program = program.split("\n")
-    # Remove duplicate lines
-    seen = set()
-    seen_add = seen.add
-    program = [x for x in program if not (x in seen or seen_add(x))]
-    
-    parsed_rules = []
-    parsed_rule_dict = {}
-    label_rule_dict = {}
-    label = None
-    for rule_str in program:
-        if len(rule_str.strip()) == 0:
+def parse_program(terms: list):
+    success = []
+    parsed_program = []
+    for term in terms:
+        # Parsing.
+        try:
+            parsed_program.extend(preprocess(parse_line(term['asp']))) # Unpack pooling and #count aggregates, negated heads to constraints, ...
+        except Exception as e:
+            success.append({
+                'code': 10,
+                'msg': "Syntax error " + str(e)
+            })
             continue
-        elif rule_str.strip().startswith("% "):
-            label = rule_str.replace("% ", "")
-            continue
-
-        rule = parse_line(rule_str)
-
-        # Remove location inforamtion for efficiency
-        # remove_location(rule)
-
-        parsed_rules.append(rule)
-        
-        hash_head = get_hash_head(rule)
-        if hash_head not in parsed_rule_dict:
-            parsed_rule_dict[hash_head] = []
-        parsed_rule_dict[hash_head].append(rule)
-        label_rule_dict[label] = rule
-    return parsed_rule_dict, label_rule_dict
+        # Success code
+        success.append({
+            'code': 0,
+            'msg': "Success"
+        })
+    assert len(terms) == len(success)
+    return parsed_program, success
 
 class RenameVariableState:
     def __init__(self):

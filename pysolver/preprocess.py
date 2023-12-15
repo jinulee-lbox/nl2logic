@@ -7,8 +7,6 @@ from clingo.ast import *
 from clingo.control import *
 from clingo.symbol import *
 
-from .utils import convert_numeric_string_to_int
-
 def powerset(iterable):
     s = list(iterable)
     return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s)+1))
