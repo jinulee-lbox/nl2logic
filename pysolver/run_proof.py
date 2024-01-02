@@ -47,8 +47,10 @@ not b(X, 1) :- not c(X).
 b(X, 2) :- d(X).
 not b(X, 2) :- not d(X).
 z(k)."""
+#     program = """ans(X) :- grnd(C), X = C + 13 / 2.
+# grnd(C) :- C = 6.8."""
     program = [{"asp": x.strip()} for x in program.split("\n")]
-    result = get_proof_tree(program, parse_line("is(harry, nice).").head)
+    result = get_proof_tree(program, parse_line("not fin(X).").head)
     print(result)
     # result = get_unproved_goals(program, parse_line("not fin(_).").head, {})
     # print([(str(x[0]), unproved_goal_state_to_str(x[1])) for x in result])

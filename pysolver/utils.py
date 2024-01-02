@@ -7,8 +7,10 @@ from enum import Enum
 from .preprocess import preprocess
 
 UNIT_FACTOR = {
+    # Normal floats
+    "": 1,
     # Numeric units
-    "%" : 1000,
+    "%" : 1,
     # Time units (second)
     "초": 1,
     "분": 60,
@@ -58,11 +60,68 @@ def convert_numeric_string_to_int(input_string):
         num = float(num_str.replace(",",""))
         if unit in UNIT_FACTOR:
             # print(num, unit)
-            return int(num * UNIT_FACTOR[unit])
+            return num * UNIT_FACTOR[unit]
         else:
             return input_string
     else:
         return input_string
+
+
+def evaluate_num(ast: AST):
+    result = _evaluate_num(ast)
+    if result is not None:
+        return SymbolicTerm(ast.location, String(str(result))) # simple numeric value to string.
+    return ast
+
+def _evaluate_num(ast: AST):
+    # Evaluate ast into number (SymbolicTerm) if applicable.
+    if ast.ast_type == ASTType.Variable:
+        return None
+    elif ast.ast_type == ASTType.SymbolicTerm:
+        if ast.symbol.type == SymbolType.Number:
+            return ast.symbol.number
+        elif ast.symbol.type == SymbolType.String:
+            string = convert_numeric_string_to_int(ast.symbol.string)
+            if isinstance(string, int):
+                return string
+            else:
+                return None
+        else:
+            return None
+    elif ast.ast_type == ASTType.Function:
+        # Predefined functions
+        if ast.name == "round" and len(ast.arguments == 1):
+            # round() function
+            value = _evaluate_num(ast.arguments[0])
+            if value is not None:
+                return round(value)
+            else:
+                return None
+    elif ast.ast_type == ASTType.UnaryOperation:
+        if ast.operator_type == UnaryOperator.Minus:
+            value = _evaluate_num(ast.arguments[0])
+            if value is not None:
+                return -value
+            else:
+                return None
+    elif ast.ast_type == ASTType.BinaryOperation:
+        value1 = _evaluate_num(ast.left)
+        value2 = _evaluate_num(ast.right)
+        if value1 is None or value2 is None:
+            return None
+        if ast.operator_type == BinaryOperator.Plus:
+            return value1 + value2
+        elif ast.operator_type == BinaryOperator.Minus:
+            return value1 - value2
+        elif ast.operator_type == BinaryOperator.Multiplication:
+            return value1 * value2
+        elif ast.operator_type == BinaryOperator.Division:
+            return value1 - value2
+        elif ast.operator_type == BinaryOperator.Power:
+            return value1 ** value2
+        elif ast.operator_type == BinaryOperator.Modulo:
+            return value1 % value2
+    return None
 
 def get_hash_head(ast:AST):
     rule_str = str(ast)
@@ -164,6 +223,9 @@ def anonymize_vars(goal_str):
     return re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", "\g<1>_", goal_str) # Remove variables
 
 def parse_line(goal: str):
+    # Convert all floating numbers (and integers) into string
+    goal = re.sub(r"\b((-)?[0-9]+(\.[0-9]+)?)", r'"\g<1>"', goal)
+    goal = goal.replace('""', '"')
     _temp = []
     parse_string(goal, callback=_temp.append)
     goal: AST = _temp[1]

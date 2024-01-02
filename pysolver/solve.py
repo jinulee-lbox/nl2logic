@@ -7,7 +7,7 @@ from clingo.control import *
 from clingo.symbol import *
 from clingo.solving import *
 
-from .utils import get_hash_head, is_negated, is_ground, flip_sign, UnprovedGoalState, parse_line, convert_numeric_string_to_int
+from .utils import is_negated, is_ground, flip_sign, UnprovedGoalState, parse_line, evaluate_num
 from .unify import find_bindings, bind
 from .proof_state import ProofContext, ProofState
 
@@ -51,34 +51,39 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
         # Neither coinduction success or failure
         pass
 
-    ##### 2. Check coinduction (loop in proofs) #####
+    ##### 2. Check comparison and assignment operators #####
     if goal.atom.ast_type == ASTType.Comparison:
-        if not is_ground(goal):
-            # Comparison goal not grounded -> fail to prove anything
-            return []
         # Decompose comparison
         # (lterm) (guard (op) (rterm))
-        lterm = goal.atom.term
+        lterm = evaluate_num(goal.atom.term)
         assert len(goal.atom.guards) == 1
         guard = goal.atom.guards[0]
         op = guard.comparison
-        rterm = guard.term
+        rterm = evaluate_num(guard.term)
         if op == ComparisonOperator.Equal:
             # Equal : treat with `unify`
             bindings = find_bindings(lterm, rterm)
             if bindings is not None:
-                state = deepcopy(state)
-                state.bind(bindings)
+                # state = deepcopy(state)
+                bind(state.goal, bindings)
                 state.proved = True # Bind two literals
+                state.bindings = bindings
                 return [state]
+            else:
+                return []
         elif op == ComparisonOperator.NotEqual:
             bindings = find_bindings(lterm, rterm)
             if bindings is None:
                 state.proved = True # Bind two literals
+                state.bindings = bindings
                 return [state]
+            else:
+                return []
         else:
             # Greater/Less : only make sense if ground integers are compared
-            # print(lterm.__class__, lterm.ast_type)
+            if not is_ground(goal):
+                # Comparison goal not grounded -> fail to prove anything
+                return []
             lterm = lterm.symbol # Extract clingo.Symbol values
             rterm = rterm.symbol
             # Only compare numbers
@@ -87,19 +92,6 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                     op == ComparisonOperator.GreaterEqual and lterm.number >= rterm.number or \
                     op == ComparisonOperator.LessThan and lterm.number < rterm.number or \
                     op == ComparisonOperator.LessThan and lterm.number <= rterm.number:
-                        state.proved = True
-                        return [state]
-                else:
-                    return []
-            elif lterm.type == rterm.type == SymbolType.String:
-                lterm_val = convert_numeric_string_to_int(lterm.string)
-                rterm_val = convert_numeric_string_to_int(rterm.string)
-                if isinstance(lterm_val, str) or isinstance(rterm_val, str):
-                    return []
-                if op == ComparisonOperator.GreaterThan and lterm_val > rterm_val or \
-                    op == ComparisonOperator.GreaterEqual and lterm_val >= rterm_val or \
-                    op == ComparisonOperator.LessThan and lterm_val < rterm_val or \
-                    op == ComparisonOperator.LessThan and lterm_val <= rterm_val:
                         state.proved = True
                         return [state]
                 else:
@@ -145,6 +137,7 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
         # State base to proof
         state = deepcopy(original_state)
         bind(state.goal, bindings)
+        bind(rule, bindings)
         state.bindings = bindings
 
         # Add binding information created by rules
@@ -163,23 +156,17 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
             # iter2. subset: [b], bodygoal: c
             # iter3. subset: [b, c], bodygoal: d
 
-            body_subset_proofs = [(state, [])]
+            body_subset_proofs = [(state, [], bindings)]
             # subgoal_cache = {} # Cache results to prevent exponential explosion if many possibilities exist
             for i in range(len(rule.body)):
                 bodygoal = deepcopy(rule.body[i])
 
                 new_body_subset_proofs = []
 
-                for target_state, subset_proof in body_subset_proofs:
+                for target_state, subset_proof, curr_bindings in body_subset_proofs:
                     curr_bodygoal = deepcopy(bodygoal)
                     # bind to current bindings
-                    bind(curr_bodygoal, bindings)
-                    for subset_state in subset_proof:
-                        bind(curr_bodygoal, subset_state.bindings)
                     # Prove partially bound subgoals
-                    # if curr_bodygoal in subgoal_cache:
-                    #     new_state_proofs = subgoal_cache[curr_bodygoal]
-                    # else:
                     new_state = ProofState(curr_bodygoal)
                     new_state.parent = state
                     new_state.rule_hash = rule_hash
@@ -191,15 +178,19 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
                         # deepcopy to prevent crashing
                         new_target_state = deepcopy(target_state)
                         new_curr_proof = subset_proof + [new_proof] # Extend subset
-                        new_body_subset_proofs.append((new_target_state, new_curr_proof))
+                        new_binding = deepcopy(curr_bindings)
+                        new_binding.update(new_proof.bindings)
+                        new_body_subset_proofs.append((new_target_state, new_curr_proof, new_binding))
                 
                 # update body_subset_proofs
                 body_subset_proofs = new_body_subset_proofs
             # garbage collection
             # del subgoal_cache
             
-            for target_state, proof in body_subset_proofs:
+            for target_state, proof, final_binding in body_subset_proofs:
                 target_state.add_proof(proof)
+                bind(target_state.goal, final_binding)
+                target_state.bindings = final_binding
                 proved_states.append(target_state)
                 
     # Recover original state

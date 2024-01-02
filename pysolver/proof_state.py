@@ -4,7 +4,7 @@ import re
 from clingo.ast import *
 
 from .utils import flip_sign, is_negated, get_hash_head, parse_line
-from .unify import find_bindings, equivalent
+from .unify import bind, find_bindings, equivalent
 from .preprocess import preprocess
 
 class ProofContext():
@@ -69,10 +69,10 @@ class ProofContext():
     def reindex_variables(self, rule):
         rule_str = str(rule)
         # Re-index
-        rule_str = re.sub(r"([,( ])(_*[A-Z][A-Za-z_0-9]*)(?=[,)]| [+\-*/%><=!])", f"\g<1>\g<2>_{self.variable_index}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
+        rule_str = re.sub(r"\b(_*[A-Z][A-Za-z_0-9]*)\b", f"\g<1>_{self.variable_index}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
         anonym_idx = 0
         while True:
-            rule_str, replaced = re.subn(r"([,( ])_(?=[,)]| [+\-*/%><=!])", f"\g<1>_Anon_{self.variable_index}_{anonym_idx}", rule_str, count=1)
+            rule_str, replaced = re.subn(r"\b_\b", f"_Anon_{self.variable_index}_{anonym_idx}", rule_str, count=1)
             if replaced == 0:
                 break
             anonym_idx += 1

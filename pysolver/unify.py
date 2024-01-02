@@ -113,6 +113,10 @@ def bind(input_ast, bindings: Dict[str, AST]):
     while len(stack) > 0:
         ast = stack.pop()
         child_keys = set(ast.child_keys)
+        if "head" in child_keys:
+            stack.append(ast.head)
+        if "body" in child_keys:
+            stack.extend(ast.body)
         if "atom" in child_keys:
             stack.append(ast.atom)
         if "arguments" in child_keys:
