@@ -224,7 +224,7 @@ def anonymize_vars(goal_str):
 
 def parse_line(goal: str):
     # Convert all floating numbers (and integers) into string
-    goal = re.sub(r"\b((-)?[0-9]+(\.[0-9]+)?)", r'"\g<1>"', goal)
+    goal = re.sub(r"\b((-)?[0-9]+(\.[0-9]+)?)\b", r'"\g<1>"', goal)
     goal = goal.replace('""', '"')
     _temp = []
     parse_string(goal, callback=_temp.append)
