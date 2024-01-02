@@ -67,17 +67,25 @@ class ProofContext():
         return result
 
     def reindex_variables(self, rule):
-        rule_str = str(rule)
+        class VariableReindexer(Transformer):
+            def __init__(self, variable_idx):
+                super(VariableReindexer, self).__init__()
+                self.variable_idx = variable_idx
+                self.anonym_idx = 0
+
+            def visit_Variable(self, node):
+                if node.name == "_":
+                    # anonymous variable
+                    node.name = f"_Anon_{self.variable_idx}_{self.anonym_idx}"
+                    self.anonym_idx += 1
+                else:
+                    node.name = node.name + f"_{self.variable_idx}"
+                return node
         # Re-index
-        rule_str = re.sub(r"\b(_*[A-Z][A-Za-z_0-9]*)\b", f"\g<1>_{self.variable_index}", rule_str) # attatch rule_idx to ordinary(non-anonymous) variables
-        anonym_idx = 0
-        while True:
-            rule_str, replaced = re.subn(r"\b_\b", f"_Anon_{self.variable_index}_{anonym_idx}", rule_str, count=1)
-            if replaced == 0:
-                break
-            anonym_idx += 1
+        indexer = VariableReindexer(self.variable_index)
+        rule = indexer(deepcopy(rule))
         self.variable_index += 1
-        return parse_line(rule_str)
+        return rule
 
 class ProofState():
     def __init__(self, goal: AST):
@@ -91,6 +99,7 @@ class ProofState():
         self.rule_hash: int = None
         # Children
         self.proof: List[ProofState]= [] # proved
+
 
     def get_root(self):
         curr_state = self

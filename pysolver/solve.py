@@ -127,7 +127,7 @@ def recursive_solve(state: ProofState, context: ProofContext, unproved_callback 
     for rule in rules:
         rule_hash = rule.__hash__() # hash before reindexing
         # Check if goal unifies with rule head, and get variable mapping
-        rule = context.reindex_variables(rule)
+        rule = context.reindex_variables(rule) # deepcopy
 
         bindings = find_bindings(rule.head, goal)
         if bindings is None:

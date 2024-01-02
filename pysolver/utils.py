@@ -224,7 +224,18 @@ def anonymize_vars(goal_str):
 
 def parse_line(goal: str):
     # Convert all floating numbers (and integers) into string
-    goal = re.sub(r"\b((-)?[0-9]+(\.[0-9]+)?)\b", r'"\g<1>"', goal)
+    # Do not convert strings enclosed in double-quote.
+    # FIXME Assume that there are no escaped double quotes.
+    goal_list = goal.split('"') # split with double quotes
+    refined_goal_list = []
+    for i, snippet in enumerate(goal_list):
+        if i % 2 == 0:
+            # Non-string
+            refined_goal_list.append(re.sub(r"\b((-)?[0-9]+(\.[0-9]+)?)\b", r'"\g<1>"', snippet))
+        else:
+            # String
+            refined_goal_list.append(snippet)
+    goal = '"'.join(refined_goal_list)
     goal = goal.replace('""', '"')
     _temp = []
     parse_string(goal, callback=_temp.append)
