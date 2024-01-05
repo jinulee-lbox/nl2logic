@@ -10,7 +10,7 @@ from langchain.prompts import (
 
 from ..utils.chat_model import openai_chat_model
 
-def validate_rationale_from_document(natural_language_goal, body_text, context) -> Tuple[bool, str]:
+def validate_description_from_document(natural_language_goal, body_text, context) -> Tuple[bool, str]:
     # Set example few-shot prompt
     prompt = context.prompt_data['validate_description_from_document']
     get_asp_and_rationale_prompt = ChatPromptTemplate.from_messages([

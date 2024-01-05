@@ -65,7 +65,7 @@ def get_statement_from_description(curr_goal_cleansed: str, rationale: str, exam
 
     # Run LLMChain
     chain = LLMChain(llm=openai_chat_model(), prompt=get_asp_and_rationale_prompt)
-    result = str(chain.run({"curr_goal_cleansed": curr_goal_cleansed, "rationale": rationale})).strip(" \\n")
+    result = str(chain.run({"curr_goal_cleansed": curr_goal_cleansed, "description": rationale})).strip(" \\n")
     
     try:
         # Heuristic: if not a python list, add square braces

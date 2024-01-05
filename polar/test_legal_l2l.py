@@ -38,7 +38,7 @@ def main():
             case["goal"] = goal; case["label"] = True
             rules = get_initial_program(case, None)
             for rule in rules:
-                rule["statement"] = rule.pop("asp")
+                rule["statement"] = rule.pop("statement")
                 rule["description"] = rule.pop("comment")
             case["world_model"] = rules
             case["program"] = []
@@ -56,7 +56,7 @@ def main():
             case["goal"] = goal; case["label"] = True
             rules = get_initial_program(case, None)
             for rule in rules:
-                rule["statement"] = rule.pop("asp")
+                rule["statement"] = rule.pop("statement")
                 rule["description"] = rule.pop("comment")
             case["world_model"] = rules
             case["program"] = []

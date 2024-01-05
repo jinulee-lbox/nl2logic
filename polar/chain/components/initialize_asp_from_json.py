@@ -71,11 +71,11 @@ def get_initial_program(doc, context):
                 if skip_word in asp_str:
                     return True
             return False
-        new_program = [x for x in new_program if not skip(x["asp"])]
+        new_program = [x for x in new_program if not skip(x["statement"])]
         program += new_program
 
         # Check if recursive inclusion is required
-        raw_str_program = "\n".join([x["asp"] for x in new_program])
+        raw_str_program = "\n".join([x["statement"] for x in new_program])
         for new_law_id in re.findall(r"crime\(\"([ㄱ-ㅣ가-힣() ]+)\"\)", raw_str_program):
             if new_law_id not in visited:
                 law_ids.append(new_law_id)

@@ -6,24 +6,24 @@ from pysolver.unify import find_bindings
 from pysolver.utils import parse_line
 from nl2logic.logic_utils import asp_parse_program, asp_extract_const_list
 
-def validate_asp_list(asp_list: List, goal: AST, polar_context):
+def validate_statement_list(statement_list: List, goal: AST, polar_context):
     result = []
     error = []
-    for asp_dict in asp_list:
-        if not isinstance(asp_dict, dict) or "asp" not in asp_dict or "comment" not in asp_dict:
+    for statement in statement_list:
+        if not isinstance(statement, dict) or "statement" not in statement or "comment" not in statement:
             error.append("Wrong dict key")
             continue
-        asp: str = asp_dict["asp"].strip()
+        asp: str = statement["statement"].strip()
         
         # Heuristic. Check if asp code ends with a period
         if not asp.endswith("."):
             asp += "."
         # Heuristic. Change single to double quote
         asp = asp.replace("'", '"')
-        asp_dict['asp'] = asp
+        statement['asp'] = asp
         
         # Heuristic. Check if asp is a rule, and head is a single literal
-        _, success = asp_parse_program([asp_dict])
+        _, success = asp_parse_program([statement])
         success = success[0]["code"] == 0
         if not success:
             error.append("Syntax error")
@@ -49,7 +49,7 @@ def validate_asp_list(asp_list: List, goal: AST, polar_context):
                 continue
 
         # If all satisfied, add to successful results.
-        asp_dict["asp"] = asp
-        result.append(asp_dict)
+        statement["statement"] = asp
+        result.append(statement)
         error.append("Success")
     return result, error

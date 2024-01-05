@@ -54,7 +54,7 @@ def abduction_factory(proof_context: ProofContext, body_text: str, polar_context
                         continue
                     asp_dedup.add(a)
                     result.append({
-                        "asp": a,
+                        "statement": a,
                         "comment": r
                     })
 
@@ -75,12 +75,12 @@ def abduction_factory(proof_context: ProofContext, body_text: str, polar_context
                 # Covnert ASP to string
                 if config.polar.reformulate_description:
                     asp["comment_raw"] = asp["comment"]
-                    asp["comment"] = get_description_from_statement(parse_line(asp["asp"]), polar_context)
+                    asp["comment"] = get_description_from_statement(parse_line(asp["statement"]), polar_context)
                 logging.info(json.dumps(asp, indent=4, ensure_ascii=False))
                 # Perform self validation if mentioned in config
                 do_self_validation = config.polar.self_validation
                 if do_self_validation:
-                    self_validation, self_val_fail_msg = validate_rationale_from_document(asp["comment"], body_text, polar_context)
+                    self_validation, self_val_fail_msg = validate_description_from_document(asp["comment"], body_text, polar_context)
                 else:
                     self_validation = True
                 # If self-validated by GPT,
@@ -93,7 +93,7 @@ def abduction_factory(proof_context: ProofContext, body_text: str, polar_context
                     proved = True # end the loop
                 else:
                     logging.info(f"=> Unproved. Reason: {self_val_fail_msg}")
-                    error_prompt += str(asp["asp"]) + "\n" + "Error: Self-validation failed because: " + self_val_fail_msg
+                    error_prompt += str(asp["statement"]) + "\n" + "Error: Self-validation failed because: " + self_val_fail_msg
                     pass
 
             if proved:
