@@ -1,0 +1,6 @@
+{
+    "get_description_from_document": "Write a single-step abduction step for the query = {curr_goal_text}.\nGiven the document, list every sentences that is related to {curr_goal_text} by sharing either the verb, subject, or the object. Print one sentence per line.",
+    "get_statement_from_description": "Convert the given sentence to a simple Prolog statement.\nFollow the format `{curr_goal_cleansed}.` or `{curr_goal_cleansed} :- ~.`.",
+    "get_description_from_statement": "Translate the following statement into a grammatical sentence without removing or altering words. Skip underscore(_).",
+    "validate_description_from_document" : "Read the document and the sentence. Can this sentence be true, by being inferred/implied from the document?\nFirst answer with 'Yes.' or 'No.', and describe the reason."
+}
