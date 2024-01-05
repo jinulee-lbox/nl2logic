@@ -24,6 +24,7 @@ class PolarContext():
             self.world_data = json.load(open(dataset_dir / "world_data.json"))
         # Mandatory
         self.test_data = json.load(open(dataset_dir / "test_data.json"))
+        self.prompt_data = json.load(open(dataset_dir / "prompt_data.json"))
 
         self._validate_data()
     
@@ -73,7 +74,7 @@ class PolarContext():
         assert isinstance(data, list)
         for datum in data:
             assert isinstance(datum, dict)
-            for k in ["id", "body_text", "rule_names", "goal", "label", "program"]:
+            for k in ["id", "body_text", "world_model", "goal", "label", "program"]:
                 assert k in datum
 
     # def find_missing_ontology(self, consts: List[AST]):

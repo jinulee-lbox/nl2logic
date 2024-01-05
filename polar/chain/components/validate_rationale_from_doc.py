@@ -10,22 +10,12 @@ from langchain.prompts import (
 
 from ..utils.chat_model import openai_chat_model
 
-VALIDATE_RATIONALE_FROM_DOC_PROMPT = \
-r"""Your goal is to read the document given, and judge if the sentence is true or at least not contradictory to the document.
-"""
-
-VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT = \
-r"""Can this sentence be true without contradiction against the document?
-First answer with 'Yes.' or 'No.', and describe the reason.
-"""
-
-def validate_rationale_from_doc(natural_language_goal, body_text) -> Tuple[bool, str]:
+def validate_rationale_from_document(natural_language_goal, body_text, context) -> Tuple[bool, str]:
     # Set example few-shot prompt
-
+    prompt = context.prompt_data['validate_description_from_document']
     get_asp_and_rationale_prompt = ChatPromptTemplate.from_messages([
-        SystemMessagePromptTemplate.from_template(VALIDATE_RATIONALE_FROM_DOC_PROMPT),
+        SystemMessagePromptTemplate.from_template(prompt),
         ("human", "Document:\n{body_text}"),
-        SystemMessagePromptTemplate.from_template(VALIDATE_RATIONALE_FROM_DOC_DIRECTION_PROMPT),
         ("human", "Sentence: {goal}"),
     ])
 

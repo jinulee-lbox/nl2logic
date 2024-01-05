@@ -3,8 +3,9 @@ import random
 import logging
 
 from nl2logic.database_utils.db_utils import DatabaseAPI
-from nl2logic.config import set_logger
-from polar.chain.generate_abductive_proof import generate_abductive_proof
+from polar.chain.components.initialize_asp_from_json import get_initial_program, get_goals
+
+from polar.chain.utils import config, PolarContext
 
 file_dir = "data/precedent_traffic_crimes.jsonl"
 target_casename = [
@@ -18,34 +19,56 @@ target_casename = [
     # "도로교통법위반" # 업무상과실 재물손괴??
 ]
 
-NUM_PER_CASE = 20
+NUM_PER_GUILTY_CASE = 20
+NUM_PER_INNOCENT_CASE = 10
 
 def main():
-    set_logger("langchain")
-
     random.seed(41)
     db = DatabaseAPI("nl2logic")
     case_data = []
+    idx = 0
+    # dataset = PolarContext(config, dataset)
     for casename in target_casename:
         # Select guilty
         rawcase = db.query("SELECT * FROM data_rawcase WHERE law_id = %s AND verdict = %s", (casename, "guilty"))
         random.shuffle(rawcase)
-        case_data.extend(rawcase[:NUM_PER_CASE])
+        cases = rawcase[:NUM_PER_GUILTY_CASE]
+        for case in cases:
+            goal = get_goals(case)[0]
+            case["goal"] = goal; case["label"] = True
+            rules = get_initial_program(case, None)
+            for rule in rules:
+                rule["statement"] = rule.pop("asp")
+                rule["description"] = rule.pop("comment")
+            case["world_model"] = rules
+            case["program"] = []
+            case.pop("verdict")
+            case.pop("case_id")
+            case.pop("law_id")
+        case_data.extend(cases)
+    for casename in target_casename:
+        # Select guilty
+        rawcase = db.query("SELECT * FROM data_rawcase WHERE law_id = %s AND verdict = %s", (casename, "innocent"))
+        random.shuffle(rawcase)
+        cases = rawcase[:NUM_PER_INNOCENT_CASE]
+        for case in cases:
+            goal = get_goals(case)[0]
+            case["goal"] = goal; case["label"] = True
+            rules = get_initial_program(case, None)
+            for rule in rules:
+                rule["statement"] = rule.pop("asp")
+                rule["description"] = rule.pop("comment")
+            case["world_model"] = rules
+            case["program"] = []
+            case.pop("verdict")
+            case.pop("case_id")
+            case.pop("law_id")
+        case_data.extend(cases)
     db.close()
-
-    for case in case_data:
-        print(json.dumps(case, indent=4, ensure_ascii=False))
-        _, program = generate_abductive_proof(case)
-        # result = result[0] # First goal only
-        with open("logs/logos_trial_result.txt", "a") as file:
-            file.write("==============================\n")
-            file.write(f"{json.dumps(case, indent=4, ensure_ascii=False)}\n\n")
-            # file.write(str(result) + "\n")
-            file.write(json.dumps(program, indent=4, ensure_ascii=False) + "\n\n")
-        logging.info("==============================\n")
-        logging.info(f"{json.dumps(case, indent=4, ensure_ascii=False)}\n\n")
-        # logging.info(str(result) + "\n")
-        logging.info(json.dumps(program, indent=4, ensure_ascii=False) + "\n\n")
+    print(json.dumps(case_data[0], indent=4, ensure_ascii=False))
+    # print(json.dumps(get_initial_program(case_data[0], None), indent=4, ensure_ascii=False))
+    with open("data/sstar/test_data_raw.json", "w") as file:
+        json.dump(case_data, file, indent=4, ensure_ascii=False)
 
 if __name__ == "__main__":
     main()

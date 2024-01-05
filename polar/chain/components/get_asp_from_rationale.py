@@ -8,8 +8,7 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 
-from nl2logic.logic_utils import asp_extract_const_list
-from nl2logic.database_utils import db_get_all_consts
+from pysolver.utils import extract_const_list, parse_line
 from ..utils.chat_model import openai_chat_model
 from ..utils.context import PolarContext
 
@@ -18,18 +17,8 @@ r"""description: '{description}'
 statement: ['{statement}']\n
 """
 
-GET_ASP_FROM_RATIONALE_PROMPT = \
-r"""You have to convert the natural language sentences into a logical rule/fact statement.
-"""
-
-GET_ASP_FROM_RATIONALE_DIRECTION_PROMPT = \
-r"""Convert the given sentence to logic program. Generate a python list of single-quoted strings, each a possible conversion, best guess at first.
-Goal should unify with {curr_goal_cleansed}.
-Format: ['statement1', 'statement2', ...]
-Return type: Python List of String.
-"""
-
-def get_asp_from_rationale(curr_goal_cleansed: str, rationale: str, examples: List[Dict], context: PolarContext) -> List[str]:
+def get_statement_from_description(curr_goal_cleansed: str, rationale: str, examples: List[Dict], context: PolarContext) -> List[str]:
+    prompt = context.prompt_data['get_statement_from_description']
     # Set example few-shot prompt
     example_prompt = ChatPromptTemplate.from_template(ASP_RATIONALE_EXAMPLE_PROMPT)
     few_shot_prompt = FewShotChatMessagePromptTemplate(
@@ -43,7 +32,7 @@ def get_asp_from_rationale(curr_goal_cleansed: str, rationale: str, examples: Li
         # Extract all constants from examples
         consts = set()
         for ex in examples:
-            ex_const = asp_extract_const_list(ex['statement'])
+            ex_const = extract_const_list(parse_line(ex['statement']))
             consts.update(ex_const)
         all_consts = context.ontology_data
         for const in all_consts:
@@ -61,18 +50,16 @@ def get_asp_from_rationale(curr_goal_cleansed: str, rationale: str, examples: Li
                     name += ")"
                 const_text.append(name + ": " + description)
         get_asp_and_rationale_prompt = ChatPromptTemplate.from_messages([
-            SystemMessagePromptTemplate.from_template(GET_ASP_FROM_RATIONALE_PROMPT),
-            ("human", "\n".join(const_text)),
+            SystemMessagePromptTemplate.from_template(prompt),
             few_shot_prompt,
-            SystemMessagePromptTemplate.from_template(GET_ASP_FROM_RATIONALE_DIRECTION_PROMPT),
-            ("human", "comment: {rationale}\nasp:")
+            ("human", "\n".join(const_text)),
+            ("human", "description: {rationale}\nstatement:")
         ])  
     else:
         get_asp_and_rationale_prompt = ChatPromptTemplate.from_messages([
-            SystemMessagePromptTemplate.from_template(GET_ASP_FROM_RATIONALE_PROMPT),
+            SystemMessagePromptTemplate.from_template(prompt),
             few_shot_prompt,
-            SystemMessagePromptTemplate.from_template(GET_ASP_FROM_RATIONALE_DIRECTION_PROMPT),
-            ("human", "comment: {rationale}\nasp:")
+            ("human", "description: {rationale}\nstatement:")
         ])
 
 
@@ -81,10 +68,14 @@ def get_asp_from_rationale(curr_goal_cleansed: str, rationale: str, examples: Li
     result = str(chain.run({"curr_goal_cleansed": curr_goal_cleansed, "rationale": rationale})).strip(" \\n")
     
     try:
+        # Heuristic: if not a python list, add square braces
         if not result.startswith("["):
             result = f"[{result}"
         if not result.endswith("]"):
             result = f"{result}]"
+        # Heuristic: if the model adds integer division, convert to normal division.
+        if "//" in result:
+            result = result.replace("//", "/")
         result = eval(result) # convert string to Python list
         return result
     except:

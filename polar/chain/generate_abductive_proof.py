@@ -41,14 +41,14 @@ def abduction_factory(proof_context: ProofContext, body_text: str, polar_context
             curr_retry_count -= 1
 
             # Generate possible ASPs
-            rationales = get_rationale_from_doc(curr_goal_str, body_text, rule_examples)
+            rationales = get_description_from_document(curr_goal_str, body_text, rule_examples, polar_context)
             if rationales is None:
                 logging.info("LLM failed to generate valid JSON for rationales")
                 continue
             result = []
             asp_dedup = set()
             for r in rationales:
-                asps = get_asp_from_rationale(curr_goal_str, r, rule_examples, polar_context)
+                asps = get_statement_from_description(curr_goal_str, r, rule_examples, polar_context)
                 for a in asps:
                     if a in asp_dedup:
                         continue
@@ -73,10 +73,17 @@ def abduction_factory(proof_context: ProofContext, body_text: str, polar_context
             error_prompt = "" # reset error prompt
             for asp in valid_new_asps:
                 # Covnert ASP to string
-                asp["comment_raw"] = asp["comment"]
-                asp["comment"] = get_rationale_from_asp(parse_line(asp["asp"]), polar_context)
+                if config.polar.reformulate_description:
+                    asp["comment_raw"] = asp["comment"]
+                    asp["comment"] = get_description_from_statement(parse_line(asp["asp"]), polar_context)
                 logging.info(json.dumps(asp, indent=4, ensure_ascii=False))
-                self_validation, self_val_fail_msg = validate_rationale_from_doc(asp["comment"], body_text)
+                # Perform self validation if mentioned in config
+                do_self_validation = config.polar.self_validation
+                if do_self_validation:
+                    self_validation, self_val_fail_msg = validate_rationale_from_document(asp["comment"], body_text, polar_context)
+                else:
+                    self_validation = True
+                # If self-validated by GPT,
                 if self_validation:
                     # Validation complete
                     logging.info("=> Proved.")
@@ -116,8 +123,8 @@ def generate_abductive_proof(doc: Dict[str, Any], polar_context: PolarContext):
     # Loop through goals to prove
     logging.info(f"?- {goal}.")
 
-    # Create initial program with related laws
-    program = get_initial_program(doc, polar_context)
+    # Create initial program with pre-defined rules
+    program = doc['world_model']
     proof_context = ProofContext()
     for line in program:
         proof_context.add_rule(line)

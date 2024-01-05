@@ -62,6 +62,8 @@ def get_initial_program(doc, context):
         law_id = law_ids.pop()
         visited.add(law_id)
         new_program = json.loads(db_get_asp_body_from_law_id(law_id))["terms"]
+        for p in new_program:
+            p["source"] = law_id
         # Reduce size of program
         SKIP_WORDS = get_skip_words(law_id, doc["body_text"])
         def skip(asp_str):
@@ -82,6 +84,6 @@ def get_initial_program(doc, context):
 def get_goals(doc):
     results = []
     results.append(
-        parse_line(f"{doc['verdict']}(defendant(\"A\"), crime(\"{doc['law_id']}\"),_).").head
+        f"{doc['verdict']}(defendant(\"A\"), crime(\"{doc['law_id']}\"),_)"
     )
     return results
